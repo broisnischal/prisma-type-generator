@@ -7,7 +7,7 @@
     "dist"
   ],
   "bin": {
-    "prisma-generator-types": "dist/bin.js"
+    "prisma-type-generator": "dist/bin.js"
   },
   "scripts": {
     "build": "tsc"
