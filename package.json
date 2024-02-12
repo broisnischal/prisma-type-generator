@@ -1,0 +1,28 @@
+{
+  "name": "prisma-types-generator",
+  "version": "1.0.0",
+  "description": "Prisma type generator.",
+  "main": "index.js",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "prisma-generator-types": "dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/generator-helper": "^5.9.1"
+  },
+  "devDependencies": {
+    "@prisma/client": "^5.9.1",
+    "@types/node": "^20.11.17",
+    "prettier": "^3.2.5",
+    "prisma": "^5.9.1",
+    "typescript": "^5.3.3"
+  }
+}
