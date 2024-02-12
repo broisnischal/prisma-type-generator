@@ -17,7 +17,7 @@ npm install prisma-type-generator
 
 ## Usage
 
-```ts
+```prisma
 generator types {
   provider = "prisma-type-generator"
 }
