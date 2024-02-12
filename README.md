@@ -7,12 +7,12 @@
 ![GitHub top language](https://img.shields.io/github/languages/top/broisnischal/prisma-type-generator?style=plastic)
 [![License](https://img.shields.io/npm/l/prisma-type-generator.svg)](https://opensource.org/licenses/MIT)
 
-prisma-type-generator is a revolutionary utility extension for seamless Prisma integration. It enhances your workflow, simplifies common tasks and functions, and boosts the efficiency of your Prisma-powered applications.
+Prisma type generator is a package that generates the type and interface that are available in your schema.
 
 ## Installation
 
 ```bash
-npm install prisma-fns
+npm install prisma-type-generator
 ```
 
 ## Usage
