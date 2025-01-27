@@ -20,14 +20,14 @@
   },
   "peerDependencies": {
     "@prisma/client": "^6.2.1",
-    "@prisma/generator-helper": "^6.2.1"
+    "@prisma/generator-helper": "^6.2.1",
+    "prettier": "^3.4.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.6.0",
     "@prisma/generator-helper": "^6.2.1",
     "@types/node": "^20.11.17",
     "changesets": "^1.0.2",
-    "prettier": "^3.2.5",
     "prisma": "^6.2.1",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3"
