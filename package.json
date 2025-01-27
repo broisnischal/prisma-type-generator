@@ -19,7 +19,8 @@
     "lint": "tsc"
   },
   "peerDependencies": {
-    "@prisma/client": "^6.2.1"
+    "@prisma/client": "^6.2.1",
+    "@prisma/generator-helper": "^6.2.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.6.0",
