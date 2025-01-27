@@ -23,6 +23,7 @@ generator types {
 }
 
 // output = "path"
+// global = true || false
 ```
 
 # Example
@@ -34,7 +35,8 @@ generator client {
 }
 
 generator types {
-  provider = "prisma-generator-types"
+  provider = "prisma-type-generator"
+  global = true
 }
 
 datasource db {
@@ -87,6 +89,51 @@ export const UserType = { pro: "pro", best: "best" } as const;
 export type UserType = (typeof UserType)[keyof typeof UserType];
 ```
 
+### Global Types
+
+If you want to generate global types, you can use the `global` option.
+
+```prisma
+generator types {
+  provider = "prisma-type-generator"
+  global = true // default is false
+}
+```
+
+> It will generate the following file, types/prisma.d.ts with the following code
+
+```ts
+
+// generates in types/prisma.d.ts
+declare global {
+  export type TUser = User;
+  export type TProfile = Profile;
+  export type TUserType = UserType;
+}
+
+```
+
+Use the `global` option to generate global types.
+
+```tsx
+
+// use the generated types in your code, with the `T` prefix
+
+const data : TUser = {
+    // Add properties here if needed
+};
+
+```
+
+
+### Todo
+
+- [x] Add support for custom output path
+- [ ] Add support for custom type validator
+- [ ] Add support for custom type formatter
+
+
+
 ### Contributing
 
 If you'd like to contribute, please follow our contribution guidelines.
@@ -103,6 +150,4 @@ If you find a bug, please file an issue on [our issue tracker on GitHub](https:/
 
 prisma-fns is open-source software licensed under the MIT [license](LICENSE).
 
-```
 
-```

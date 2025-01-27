@@ -34,6 +34,12 @@ async function onGenerate(options) {
         for (const model of dataModel.models) {
             exportedTypes += `  export type T${model.name} = ${model.name};\n`;
         }
+        for (const enumType of dataModel.enums) {
+            exportedTypes += `  export type T${enumType.name} = ${enumType.name};\n`;
+        }
+        // for (const index of dataModel.indexes) {
+        //   exportedTypes += `  export type T${index.name} = ${index.name};\n`;
+        // }
         exportedTypes += "}\n\n";
     }
     const outputDir = options.generator.output?.value ?? "./types";
