@@ -3,9 +3,19 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { format } from "prettier";
 import { getTypeScriptType } from "./util";
 
+export interface PrismaTypeGeneratorOptions {
+  global?: boolean;
+  clear?: boolean;
+}
+
 export async function onGenerate(options: GeneratorOptions) {
+
+  const global = (options.generator.config as PrismaTypeGeneratorOptions)?.global ?? false;
+  // const clear = (options.generator.config as PrismaTypeGeneratorOptions)?.clear ?? false;
+
   let exportedTypes = "";
   const dataModel = options.dmmf.datamodel;
+
 
   for (const model of dataModel.models) {
     exportedTypes += `export interface ${model.name} {\n`;
@@ -37,8 +47,19 @@ export async function onGenerate(options: GeneratorOptions) {
     exportedTypes += `export type ${enumType.name} = (typeof ${enumType.name})[keyof typeof ${enumType.name}];\n\n`;
   }
 
+  if (global) {
+    exportedTypes += "declare global {\n";
+
+    // Add type aliases with T prefix
+    for (const model of dataModel.models) {
+      exportedTypes += `  export type T${model.name} = ${model.name};\n`;
+    }
+
+    exportedTypes += "}\n\n";
+  }
+
   const outputDir = options.generator.output?.value ?? "./types";
-  const fullLocaltion = `${outputDir}/index.ts`;
+  const fullLocaltion = `${outputDir}/prisma.d.ts`;
 
   mkdirSync(outputDir, { recursive: true });
 

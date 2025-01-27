@@ -5,6 +5,8 @@ const node_fs_1 = require("node:fs");
 const prettier_1 = require("prettier");
 const util_1 = require("./util");
 async function onGenerate(options) {
+    const global = options.generator.config?.global ?? false;
+    // const clear = (options.generator.config as PrismaTypeGeneratorOptions)?.clear ?? false;
     let exportedTypes = "";
     const dataModel = options.dmmf.datamodel;
     for (const model of dataModel.models) {
@@ -26,8 +28,16 @@ async function onGenerate(options) {
         exportedTypes += "} as const;\n";
         exportedTypes += `export type ${enumType.name} = (typeof ${enumType.name})[keyof typeof ${enumType.name}];\n\n`;
     }
+    if (global) {
+        exportedTypes += "declare global {\n";
+        // Add type aliases with T prefix
+        for (const model of dataModel.models) {
+            exportedTypes += `  export type T${model.name} = ${model.name};\n`;
+        }
+        exportedTypes += "}\n\n";
+    }
     const outputDir = options.generator.output?.value ?? "./types";
-    const fullLocaltion = `${outputDir}/index.ts`;
+    const fullLocaltion = `${outputDir}/prisma.d.ts`;
     (0, node_fs_1.mkdirSync)(outputDir, { recursive: true });
     const formattedCode = await (0, prettier_1.format)(exportedTypes, {
         parser: "typescript",

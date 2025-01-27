@@ -13,23 +13,23 @@
     "prisma-type-generator": "dist/bin.js"
   },
   "scripts": {
-    "build:": "tsc",
-    "build": "tsup src/bin.ts --format cjs,esm --dts",
+    "run": "npm run build && npm link",
+    "build": "tsc",
+    "build:tsup": "tsup src/bin.ts --format cjs,esm --dts",
     "lint": "tsc"
   },
   "peerDependencies": {
-    "@prisma/client": "^5.8.1"
+    "@prisma/client": "^6.2.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.6.0",
-    "@prisma/client": "^5.9.1",
-    "@prisma/generator-helper": "^5.9.1",
+    "@prisma/generator-helper": "^6.2.1",
     "@types/node": "^20.11.17",
     "changesets": "^1.0.2",
     "prettier": "^3.2.5",
-    "prisma": "^5.9.1",
-    "typescript": "^5.3.3",
-    "tsup": "^8.0.2"
+    "prisma": "^6.2.1",
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3"
   },
   "keywords": [
     "prisma",
@@ -45,6 +45,5 @@
     "email": "neeswebservice@gmail.com"
   },
   "license": "MIT",
-  "homepage": "https://github.com/broisnischal/prisma-type-generator#readme",
-  "dependencies": {}
+  "homepage": "https://github.com/broisnischal/prisma-type-generator#readme"
 }
