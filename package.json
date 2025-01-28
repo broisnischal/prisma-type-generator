@@ -6,6 +6,11 @@
   "types": "./dist/bin.d.ts",
   "module": "./dist/bin.mjs",
   "private": false,
+  "exports": {
+    "require": "./dist/bin.js",
+    "import": "./dist/bin.mjs",
+    "default": "./dist/bin.mjs"
+  },
   "files": [
     "dist"
   ],
@@ -14,21 +19,26 @@
   },
   "scripts": {
     "run": "npm run build && npm link",
-    "build": "tsc",
+    "clear": "rimraf dist",
     "build:tsup": "tsup src/bin.ts --format cjs,esm --dts",
-    "lint": "tsc"
+    "lint": "tsc",
+    "build": "npm run clear && npm run build:cjs && npm run build:esm && npm run build:dts",
+    "build:cjs": "esbuild src/**/*.ts --bundle --outdir=dist --platform=node --format=cjs",
+    "build:esm": "esbuild src/**/*.ts --bundle --out-extension:.js=.mjs --outdir=dist --platform=node --format=esm",
+    "build:dts": "tsc --declaration --emitDeclarationOnly"
   },
   "peerDependencies": {
-    "@prisma/client": "^6.2.1",
-    "@prisma/generator-helper": "^6.2.1",
-    "prettier": "^3.4.2"
+    "@prisma/client": ">=6.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.6.0",
+    "@prisma/client": "^6.2.1",
     "@prisma/generator-helper": "^6.2.1",
     "@types/node": "^20.11.17",
     "changesets": "^1.0.2",
+    "esbuild": "^0.24.2",
     "prisma": "^6.2.1",
+    "rimraf": "^6.0.1",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3"
   },
@@ -38,7 +48,8 @@
     "prisma-types",
     "types",
     "interface",
-    "database"
+    "monorepo",
+    "prisma.d.ts"
   ],
   "author": {
     "name": "Nischal",

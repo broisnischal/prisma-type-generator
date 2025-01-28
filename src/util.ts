@@ -3,23 +3,17 @@ export function getTypeScriptType(type: string) {
     case "Decimal":
     case "Int":
     case "Float":
-    case "BigInt": {
+    case "BigInt":
       return "number";
-    }
-    case "DateTime": {
+    case "DateTime":
       return "Date";
-    }
-    case "Boolean": {
+    case "Boolean":
       return "boolean";
-    }
-    case "Json": {
-      return "any";
-    }
-    case "String": {
+    case "Json":
+      return "Record<string, unknown>";
+    case "String":
       return "string";
-    }
-    default: {
+    default:
       return type;
-    }
   }
 }

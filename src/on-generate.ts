@@ -1,21 +1,24 @@
 import type { GeneratorOptions } from "@prisma/generator-helper";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { format } from "prettier";
 import { getTypeScriptType } from "./util";
-
-export interface PrismaTypeGeneratorOptions {
-  global?: boolean;
-  clear?: boolean;
-}
+import { parseConfig } from "./config";
 
 export async function onGenerate(options: GeneratorOptions) {
+  const config = parseConfig(options.generator.config);
 
-  const global = (options.generator.config as PrismaTypeGeneratorOptions)?.global ?? false;
-  // const clear = (options.generator.config as PrismaTypeGeneratorOptions)?.clear ?? false;
+  const global = config.global ?? false;
+  const clear = config.clear ?? false;
+  const enumOnly = config.enumOnly ?? false;
 
   let exportedTypes = "";
+
   const dataModel = options.dmmf.datamodel;
 
+  if (enumOnly) {
+    for (const enumType of dataModel.enums) {
+      exportedTypes += `export const ${enumType.name} = {`;
+    }
+  }
 
   for (const model of dataModel.models) {
     exportedTypes += `export interface ${model.name} {\n`;
@@ -29,22 +32,40 @@ export async function onGenerate(options: GeneratorOptions) {
       const nullability = field.isRequired ? "" : "| null";
       const list = field.isList ? "[]" : "";
 
-      exportedTypes += `${field.name}: ${typeScriptType}${nullability}${list};\n`;
+      exportedTypes += `  ${field.name}: ${typeScriptType}${nullability}${list};\n`;
     }
 
     exportedTypes += "}\n\n";
   }
 
+  // As const not supported for declaration file
+
+  // for (const enumType of dataModel.enums) {
+  //   exportedTypes += `export const ${enumType.name} = {`;
+
+  //   for (const enumValue of enumType.values) {
+  //     exportedTypes += `${enumValue.name}: "${enumValue.name}",\n`;
+  //   }
+
+  //   exportedTypes += "} as const;\n";
+
+  //   exportedTypes += `export type ${enumType.name} = (typeof ${enumType.name})[keyof typeof ${enumType.name}];\n\n`;
+  // }
+
   for (const enumType of dataModel.enums) {
-    exportedTypes += `export const ${enumType.name} = {`;
+    // Generate the type first
+    exportedTypes += `export type ${enumType.name} = ${enumType.values
+      .map((v) => `"${v.name}"`)
+      .join(" | ")};\n\n`;
+
+    // Then generate the const object
+    exportedTypes += `export declare const ${enumType.name}: {\n`;
 
     for (const enumValue of enumType.values) {
-      exportedTypes += `${enumValue.name}: "${enumValue.name}",\n`;
+      exportedTypes += `  readonly ${enumValue.name}: "${enumValue.name}";\n`;
     }
 
-    exportedTypes += "} as const;\n";
-
-    exportedTypes += `export type ${enumType.name} = (typeof ${enumType.name})[keyof typeof ${enumType.name}];\n\n`;
+    exportedTypes += "};\n\n";
   }
 
   if (global) {
@@ -59,10 +80,6 @@ export async function onGenerate(options: GeneratorOptions) {
       exportedTypes += `  export type T${enumType.name} = ${enumType.name};\n`;
     }
 
-    // for (const index of dataModel.indexes) {
-    //   exportedTypes += `  export type T${index.name} = ${index.name};\n`;
-    // }
-
     exportedTypes += "}\n\n";
   }
 
@@ -71,9 +88,7 @@ export async function onGenerate(options: GeneratorOptions) {
 
   mkdirSync(outputDir, { recursive: true });
 
-  const formattedCode = await format(exportedTypes, {
-    parser: "typescript",
-  });
+  const formattedCode = exportedTypes;
 
   writeFileSync(fullLocaltion, formattedCode);
 }
