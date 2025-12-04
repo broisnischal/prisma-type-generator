@@ -2,14 +2,14 @@ export interface PrismaTypeGeneratorOptions {
   /**
    * Generate types in the global namespace.
    *
-   * @default false
+   * @default true
    */
   global?: boolean;
 
   /**
    * Clear the output directory before generating types.
    *
-   * @default false
+   * @default true
    */
   clear?: boolean;
 
@@ -47,6 +47,14 @@ export interface PrismaTypeGeneratorOptions {
    * @default false
    */
   jsonTypeMapping?: boolean;
+
+  /**
+   * Custom namespace name for JSON type mapping.
+   * When jsonTypeMapping is enabled, this namespace will be used instead of the default "PrismaType".
+   * 
+   * @default "PrismaType"
+   */
+  namespaceName?: string;
 
   /**
    * Generate JSDoc comments from Prisma schema comments.
@@ -97,8 +105,8 @@ export function parseConfig(
   }
 
   return {
-    global: parseBoolean(config.global, false),
-    clear: parseBoolean(config.clear, false),
+    global: parseBoolean(config.global, true),
+    clear: parseBoolean(config.clear, true),
     enumOnly: parseBoolean(config.enumOnly, false),
     include: config.include ? String(config.include).trim() : undefined,
     exclude: config.exclude ? String(config.exclude).trim() : undefined,
@@ -106,6 +114,9 @@ export function parseConfig(
       ? String(config.typeMappings).trim()
       : undefined,
     jsonTypeMapping: parseBoolean(config.jsonTypeMapping, false),
+    namespaceName: config.namespaceName
+      ? String(config.namespaceName).trim()
+      : "PrismaType",
     jsDocComments: parseBoolean(config.jsDocComments, false),
     splitFiles,
     barrelExports: parseBoolean(config.barrelExports, true),

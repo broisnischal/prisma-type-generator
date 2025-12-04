@@ -1397,13 +1397,14 @@ function parseConfig(config) {
     );
   }
   return {
-    global: parseBoolean(config.global, false),
-    clear: parseBoolean(config.clear, false),
+    global: parseBoolean(config.global, true),
+    clear: parseBoolean(config.clear, true),
     enumOnly: parseBoolean(config.enumOnly, false),
     include: config.include ? String(config.include).trim() : void 0,
     exclude: config.exclude ? String(config.exclude).trim() : void 0,
     typeMappings: config.typeMappings ? String(config.typeMappings).trim() : void 0,
     jsonTypeMapping: parseBoolean(config.jsonTypeMapping, false),
+    namespaceName: config.namespaceName ? String(config.namespaceName).trim() : "PrismaType",
     jsDocComments: parseBoolean(config.jsDocComments, false),
     splitFiles,
     barrelExports: parseBoolean(config.barrelExports, true),
@@ -1416,7 +1417,7 @@ function parseBoolean(value, defaultValue) {
 }
 
 // src/util.ts
-function parseTypeMappings(mappings, defaultMappings, jsonTypeMapping) {
+function parseTypeMappings(mappings, defaultMappings, jsonTypeMapping, namespaceName = "PrismaType") {
   const result = {
     Decimal: "number",
     Int: "number",
@@ -1429,7 +1430,7 @@ function parseTypeMappings(mappings, defaultMappings, jsonTypeMapping) {
     ...defaultMappings
   };
   if (jsonTypeMapping) {
-    result.Json = "PrismaType.Json";
+    result.Json = `${namespaceName}.Json`;
   } else {
     result.Json = "Record<string, unknown>";
   }
@@ -1457,7 +1458,7 @@ function extractJSDoc(comment) {
 function parseOmitDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@omit\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  const match = cleanComment.match(/@omit\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?(?=\s*@|\s*$)/);
   if (match && match[1]) {
     const fieldsStr = match[1].trim();
     const typeName = match[2]?.trim();
@@ -1474,7 +1475,7 @@ function parseOmitDirective(comment) {
 function parsePickDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@pick\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  const match = cleanComment.match(/@pick\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?(?=\s*@|\s*$)/);
   if (match && match[1]) {
     const fieldsStr = match[1].trim();
     const typeName = match[2]?.trim();
@@ -1491,7 +1492,7 @@ function parsePickDirective(comment) {
 function parseInputDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@input(?:model)?(?:\s+(.+))?$/);
+  const match = cleanComment.match(/@input(?:model)?(?:\s+(.+?))?(?=\s*@|\s*$)/);
   if (match) {
     if (match[1]) {
       const names = match[1].split(",").map((n) => n.trim()).filter((n) => n.length > 0);
@@ -1521,7 +1522,7 @@ function parseGroupDirective(comment) {
 function parseWithDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@with\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  const match = cleanComment.match(/@with\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?(?=\s*@|\s*$)/);
   if (match && match[1]) {
     const relationsStr = match[1].trim();
     const typeName = match[2]?.trim();
@@ -1538,12 +1539,12 @@ function parseWithDirective(comment) {
 function parseSelectDirective(comment) {
   if (!comment) return false;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  return /@select(?:\s|$)/.test(cleanComment);
+  return /@select(?=\s|$|@)/.test(cleanComment);
 }
 function parseValidatedDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@validated(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  const match = cleanComment.match(/@validated(?:\s+([A-Z][a-zA-Z0-9]*))?(?=\s*@|\s*$)/);
   if (match) {
     return match[1]?.trim() || "Validated";
   }
@@ -1580,24 +1581,100 @@ function generateOmitTypeName(omitFields) {
   const connector = parts.length > 1 ? "And" : "";
   return `Without${parts.join(connector)}`;
 }
-function parseTypeMappingFromComment(comment, jsonTypeMapping) {
+function parseTypeMappingFromComment(comment, jsonTypeMapping, namespaceName = "PrismaType") {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  if (cleanComment.startsWith("!")) {
+    const typeDef = cleanComment.substring(1).trim();
+    if (typeDef.startsWith("{")) {
+      let braceCount = 0;
+      let endIndex = -1;
+      for (let i = 0; i < typeDef.length; i++) {
+        if (typeDef[i] === "{") braceCount++;
+        if (typeDef[i] === "}") {
+          braceCount--;
+          if (braceCount === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+      }
+      if (endIndex > 0) {
+        return typeDef.substring(0, endIndex).trim();
+      }
+    }
+    if (typeDef.startsWith("[")) {
+      let bracketCount = 0;
+      let endIndex = -1;
+      for (let i = 0; i < typeDef.length; i++) {
+        if (typeDef[i] === "[") bracketCount++;
+        if (typeDef[i] === "]") {
+          bracketCount--;
+          if (bracketCount === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+      }
+      if (endIndex > 0) {
+        return typeDef.substring(0, endIndex).trim();
+      }
+    }
+    return typeDef;
+  }
   const match = cleanComment.match(/@type\s+(\S+)\s*=\s*(.+)/);
   if (match && match[1] && match[2]) {
     const prismaType = match[1].trim();
     let typeName = match[2].trim();
     typeName = typeName.replace(/\s*\/\/.*$/, "").trim();
+    if (typeName.startsWith("!")) {
+      const inlineType = typeName.substring(1).trim();
+      if (inlineType.startsWith("{")) {
+        let braceCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < inlineType.length; i++) {
+          if (inlineType[i] === "{") braceCount++;
+          if (inlineType[i] === "}") {
+            braceCount--;
+            if (braceCount === 0) {
+              endIndex = i + 1;
+              break;
+            }
+          }
+        }
+        if (endIndex > 0) {
+          return inlineType.substring(0, endIndex).trim();
+        }
+      }
+      if (inlineType.startsWith("[")) {
+        let bracketCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < inlineType.length; i++) {
+          if (inlineType[i] === "[") bracketCount++;
+          if (inlineType[i] === "]") {
+            bracketCount--;
+            if (bracketCount === 0) {
+              endIndex = i + 1;
+              break;
+            }
+          }
+        }
+        if (endIndex > 0) {
+          return inlineType.substring(0, endIndex).trim();
+        }
+      }
+      return inlineType;
+    }
     if (prismaType === "Json" && jsonTypeMapping) {
       if (typeName === "any" || typeName === "Json") {
-        return "PrismaType.Json";
+        return `${namespaceName}.Json`;
       }
-      if (typeName.startsWith("PrismaType.")) {
+      if (typeName.startsWith(`${namespaceName}.`)) {
         return typeName;
       }
       const isSimpleIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(typeName);
       if (isSimpleIdentifier) {
-        return `PrismaType.${typeName}`;
+        return `${namespaceName}.${typeName}`;
       }
       const typeKeywords = /* @__PURE__ */ new Set([
         "string",
@@ -1618,6 +1695,8 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
       ]);
       let result = typeName;
       let offset = 0;
+      const namespacePrefix = `${namespaceName}.`;
+      const namespacePrefixLength = namespacePrefix.length;
       const matches = Array.from(
         typeName.matchAll(/\b([A-Z][a-zA-Z0-9_$]*)\b/g)
       );
@@ -1628,16 +1707,16 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
           continue;
         }
         const beforeMatch = result.substring(
-          Math.max(0, matchIndex + offset - 11),
+          Math.max(0, matchIndex + offset - namespacePrefixLength),
           matchIndex + offset
         );
-        if (beforeMatch === "PrismaType.") {
+        if (beforeMatch === namespacePrefix) {
           continue;
         }
         const before = result.substring(0, matchIndex + offset);
         const after = result.substring(matchIndex + offset + identifier.length);
-        result = before + `PrismaType.${identifier}` + after;
-        offset += 11;
+        result = before + `${namespacePrefix}${identifier}` + after;
+        offset += namespacePrefixLength;
       }
       return result;
     }
@@ -1646,17 +1725,55 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
   const simpleMatch = cleanComment.match(/@type\s+(\S+)=(\S+)/);
   if (simpleMatch) {
     const prismaType = simpleMatch[1];
-    const typeName = simpleMatch[2];
+    let typeName = simpleMatch[2];
+    if (typeName.startsWith("!")) {
+      const inlineType = typeName.substring(1).trim();
+      if (inlineType.startsWith("{")) {
+        let braceCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < inlineType.length; i++) {
+          if (inlineType[i] === "{") braceCount++;
+          if (inlineType[i] === "}") {
+            braceCount--;
+            if (braceCount === 0) {
+              endIndex = i + 1;
+              break;
+            }
+          }
+        }
+        if (endIndex > 0) {
+          return inlineType.substring(0, endIndex).trim();
+        }
+      }
+      if (inlineType.startsWith("[")) {
+        let bracketCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < inlineType.length; i++) {
+          if (inlineType[i] === "[") bracketCount++;
+          if (inlineType[i] === "]") {
+            bracketCount--;
+            if (bracketCount === 0) {
+              endIndex = i + 1;
+              break;
+            }
+          }
+        }
+        if (endIndex > 0) {
+          return inlineType.substring(0, endIndex).trim();
+        }
+      }
+      return inlineType;
+    }
     if (prismaType === "Json" && jsonTypeMapping) {
       if (typeName === "any" || typeName === "Json") {
-        return "PrismaType.Json";
+        return `${namespaceName}.Json`;
       }
-      if (typeName.startsWith("PrismaType.")) {
+      if (typeName.startsWith(`${namespaceName}.`)) {
         return typeName;
       }
       const isSimpleIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(typeName);
       if (isSimpleIdentifier) {
-        return `PrismaType.${typeName}`;
+        return `${namespaceName}.${typeName}`;
       }
       const typeKeywords = /* @__PURE__ */ new Set([
         "string",
@@ -1677,6 +1794,8 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
       ]);
       let result = typeName;
       let offset = 0;
+      const namespacePrefix = `${namespaceName}.`;
+      const namespacePrefixLength = namespacePrefix.length;
       const matches = Array.from(
         typeName.matchAll(/\b([A-Z][a-zA-Z0-9_$]*)\b/g)
       );
@@ -1687,16 +1806,16 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
           continue;
         }
         const beforeMatch = result.substring(
-          Math.max(0, matchIndex + offset - 11),
+          Math.max(0, matchIndex + offset - namespacePrefixLength),
           matchIndex + offset
         );
-        if (beforeMatch === "PrismaType.") {
+        if (beforeMatch === namespacePrefix) {
           continue;
         }
         const before = result.substring(0, matchIndex + offset);
         const after = result.substring(matchIndex + offset + identifier.length);
-        result = before + `PrismaType.${identifier}` + after;
-        offset += 11;
+        result = before + `${namespacePrefix}${identifier}` + after;
+        offset += namespacePrefixLength;
       }
       return result;
     }
@@ -1734,13 +1853,43 @@ function shouldIncludeModel(modelName, include, exclude) {
   }
   return true;
 }
+function shouldIncludeEnum(enumName, include, exclude) {
+  if (exclude) {
+    const excludeList = exclude.split(",").map((s) => s.trim());
+    if (excludeList.includes(enumName)) {
+      return false;
+    }
+  }
+  if (include) {
+    const includeList = include.split(",").map((s) => s.trim());
+    return includeList.includes(enumName);
+  }
+  return true;
+}
 function modelToFileName(modelName) {
   return modelName.charAt(0).toLowerCase() + modelName.slice(1);
 }
-function getSchemaFileNameForModel(modelName, schemaFiles) {
+function inferSchemaFileNames(items) {
+  const schemaNames = /* @__PURE__ */ new Set();
+  for (const item of items) {
+    const match = item.name.match(/^([A-Z][a-z]+)/);
+    if (match) {
+      const prefix = match[1].toLowerCase();
+      schemaNames.add(prefix);
+    }
+  }
+  return schemaNames;
+}
+function getSchemaFileNameForModel(modelName, schemaFiles, inferredSchemaNames) {
   const baseNames = [];
   if (schemaFiles && schemaFiles.length > 0) {
     schemaFiles.map((file) => file.replace(/\.prisma$/, "").toLowerCase()).filter((name) => name !== "schema").forEach((name) => baseNames.push(name));
+  }
+  const allSchemaNames = inferredSchemaNames || /* @__PURE__ */ new Set();
+  if (allSchemaNames.size > 0) {
+    for (const schemaName of allSchemaNames) {
+      baseNames.push(schemaName);
+    }
   }
   for (const baseName of baseNames) {
     const prefix = baseName.charAt(0).toUpperCase() + baseName.slice(1);
@@ -1754,37 +1903,46 @@ function getSchemaFileNameForModel(modelName, schemaFiles) {
     if (baseNames.length > 0 && baseNames.includes(prefix)) {
       return prefix;
     }
-    if (["post", "user", "test"].includes(prefix)) {
+    if (baseNames.length > 0) {
+      for (const baseName of baseNames) {
+        if (baseName === prefix || baseName.startsWith(prefix) || prefix.startsWith(baseName)) {
+          return baseName;
+        }
+      }
+    }
+    if (allSchemaNames.size > 0 && allSchemaNames.has(prefix)) {
       return prefix;
     }
   }
-  return "index";
+  return null;
 }
-function groupModelsBySchemaFile(models, schemaFiles) {
+function groupModelsBySchemaFile(models, schemaFiles, inferredSchemaNames) {
   const groups = /* @__PURE__ */ new Map();
   for (const model of models) {
-    const fileName = getSchemaFileNameForModel(model.name, schemaFiles);
-    if (!groups.has(fileName)) {
-      groups.set(fileName, []);
+    const fileName = getSchemaFileNameForModel(model.name, schemaFiles, inferredSchemaNames);
+    const fileKey = fileName || "index";
+    if (!groups.has(fileKey)) {
+      groups.set(fileKey, []);
     }
-    groups.get(fileName).push(model);
+    groups.get(fileKey).push(model);
   }
   return groups;
 }
-function groupEnumsBySchemaFile(enums, schemaFiles) {
+function groupEnumsBySchemaFile(enums, schemaFiles, inferredSchemaNames) {
   const groups = /* @__PURE__ */ new Map();
   for (const enumType of enums) {
-    const fileName = getSchemaFileNameForModel(enumType.name, schemaFiles);
-    if (!groups.has(fileName)) {
-      groups.set(fileName, []);
+    const fileName = getSchemaFileNameForModel(enumType.name, schemaFiles, inferredSchemaNames);
+    const fileKey = fileName || "enums";
+    if (!groups.has(fileKey)) {
+      groups.set(fileKey, []);
     }
-    groups.get(fileName).push(enumType);
+    groups.get(fileKey).push(enumType);
   }
   return groups;
 }
-function generatePrismaTypeNamespace() {
+function generatePrismaTypeNamespace(namespaceName = "PrismaType") {
   return `/**
- * PrismaType namespace for custom type mappings
+ * ${namespaceName} namespace for custom type mappings
  * This namespace is used when jsonTypeMapping is enabled
  * 
  * IMPORTANT: To extend this namespace with your own interfaces (like UserPreferences),
@@ -1795,7 +1953,7 @@ function generatePrismaTypeNamespace() {
  * export {};
  * 
  * declare global {
- *   namespace PrismaType {
+ *   namespace ${namespaceName} {
  *     interface Json {
  *       [key: string]: any; // Customize as needed
  *     }
@@ -1810,17 +1968,17 @@ function generatePrismaTypeNamespace() {
  * 
  * Then in your Prisma schema:
  * /// @type Json=UserPreferences
- * preferences Json  // Will use PrismaType.UserPreferences via namespace merging
+ * preferences Json  // Will use ${namespaceName}.UserPreferences via namespace merging
  * 
  * Or use inline types:
  * /// @type Json=any
- * metadata Json  // Uses PrismaType.Json
+ * metadata Json  // Uses ${namespaceName}.Json
  */
 // This file must be a module, so we include an empty export.
 export {};
 
 declare global {
-  namespace PrismaType {
+  namespace ${namespaceName} {
     interface Json {
       [key: string]: any;
     }
@@ -1839,9 +1997,10 @@ function generateTypes(options) {
     exclude,
     models,
     enums,
-    jsonTypeMapping = false
+    jsonTypeMapping = false,
+    namespaceName = "PrismaType"
   } = options;
-  const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping);
+  const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping, namespaceName);
   let output = "";
   if (jsonTypeMapping) {
     output += `// This file must be a module, so we include an empty export.
@@ -1854,7 +2013,22 @@ function generateTypes(options) {
 `;
   }
   const modelsToGenerate = models || dataModel.models;
-  const enumsToGenerate = enums || dataModel.enums;
+  let enumsToGenerate = enums || dataModel.enums;
+  if (!enums && (include || exclude)) {
+    enumsToGenerate = enumsToGenerate.filter((enumType) => {
+      if (exclude) {
+        const excludeList = exclude.split(",").map((s) => s.trim());
+        if (excludeList.includes(enumType.name)) {
+          return false;
+        }
+      }
+      if (include) {
+        const includeList = include.split(",").map((s) => s.trim());
+        return includeList.includes(enumType.name);
+      }
+      return true;
+    });
+  }
   for (const enumType of enumsToGenerate) {
     const comment = jsDocComments ? extractJSDoc(enumType.documentation) : "";
     const jsDoc = comment ? `/**
@@ -1904,7 +2078,7 @@ function generateTypes(options) {
           typeScriptType = `${literalUnion} | (string & {})`;
         }
       } else {
-        const customType = parseTypeMappingFromComment(field.documentation, jsonTypeMapping);
+        const customType = parseTypeMappingFromComment(field.documentation, jsonTypeMapping, namespaceName);
         if (customType) {
           typeScriptType = customType;
         } else {
@@ -1933,12 +2107,44 @@ function generateTypes(options) {
   }
   return output;
 }
-function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) {
+function collectReferencedModels(model, modelFileMap, currentFileName) {
+  const referencedModels = /* @__PURE__ */ new Set();
+  if (!modelFileMap || !currentFileName) {
+    return referencedModels;
+  }
+  const relationFields = model.fields.filter(
+    (field) => field.kind !== "scalar" && field.kind !== "enum" && field.relationName !== void 0
+  );
+  const withDirective = parseWithDirective(model.documentation);
+  if (withDirective && withDirective.relations.length > 0) {
+    for (const relationName of withDirective.relations) {
+      const relationField = relationFields.find((f) => f.name === relationName);
+      if (relationField) {
+        const relationType = relationField.type;
+        if (relationType) {
+          const relationModelFile = modelFileMap.get(relationType);
+          if (relationModelFile && relationModelFile !== currentFileName) {
+            referencedModels.add(relationType);
+          }
+        }
+      }
+    }
+  }
+  return referencedModels;
+}
+function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping, modelFileMap, currentFileName) {
   let namespaceOutput = `/**
  * Utility types for ${model.name}
  */
 `;
   namespaceOutput += `export namespace ${model.name} {
+`;
+  namespaceOutput += `  type _Partial<T> = { [P in keyof T]?: T[P] };
+`;
+  namespaceOutput += `  type _Required<T> = { [P in keyof T]-?: T[P] };
+`;
+  namespaceOutput += `  type _Readonly<T> = { readonly [P in keyof T]: T[P] };
+
 `;
   const scalarAndEnumFields = model.fields.filter(
     (field) => ["scalar", "enum"].includes(field.kind)
@@ -1948,15 +2154,20 @@ function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) 
     (field) => field.kind !== "scalar" && field.kind !== "enum" && field.relationName !== void 0
   );
   if (omitDirective && omitDirective.fields.length > 0) {
-    const omitUnion = omitDirective.fields.map((f) => `"${f}"`).join(" | ");
-    const typeName = omitDirective.typeName || generateOmitTypeName(omitDirective.fields);
-    namespaceOutput += `  /**
-   * ${model.name} without ${omitDirective.fields.join(", ")}
+    const validOmitFields = omitDirective.fields.filter(
+      (fieldName) => allFieldNames.includes(fieldName)
+    );
+    if (validOmitFields.length > 0) {
+      const omitUnion = validOmitFields.map((f) => `"${f}"`).join(" | ");
+      const typeName = omitDirective.typeName || generateOmitTypeName(validOmitFields);
+      namespaceOutput += `  /**
+   * ${model.name} without ${validOmitFields.join(", ")}
    */
 `;
-    namespaceOutput += `  export type ${typeName} = Omit<${model.name}, ${omitUnion}>;
+      namespaceOutput += `  export type ${typeName} = Omit<${model.name}, ${omitUnion}>;
 
 `;
+    }
   }
   const pickDirective = parsePickDirective(model.documentation);
   if (pickDirective && pickDirective.fields.length > 0) {
@@ -1975,7 +2186,7 @@ function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) 
     for (const inputTypeName of inputTypes) {
       if (inputTypeName === "CreateInput") {
         const excludeFields = model.fields.filter((f) => {
-          return f.isId || f.name === "createdAt" || f.name === "updatedAt" || f.hasDefaultValue && f.name !== "createdAt" && f.name !== "updatedAt";
+          return f.isId || f.name === "createdAt" || f.name === "updatedAt";
         }).map((f) => f.name).filter((f) => allFieldNames.includes(f));
         if (excludeFields.length > 0) {
           const excludeUnion = excludeFields.map((f) => `"${f}"`).join(" | ");
@@ -2003,7 +2214,7 @@ function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) 
    * Input type for updating ${model.name} (all fields optional, omits id)
    */
 `;
-          namespaceOutput += `  export type ${inputTypeName} = Partial<Omit<${model.name}, ${excludeUnion}>>;
+          namespaceOutput += `  export type ${inputTypeName} = _Partial<Omit<${model.name}, ${excludeUnion}>>;
 
 `;
         } else {
@@ -2011,7 +2222,7 @@ function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) 
    * Input type for updating ${model.name} (all fields optional)
    */
 `;
-          namespaceOutput += `  export type ${inputTypeName} = Partial<${model.name}>;
+          namespaceOutput += `  export type ${inputTypeName} = _Partial<${model.name}>;
 
 `;
         }
@@ -2020,7 +2231,7 @@ function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) 
    * Custom input type: ${inputTypeName}
    */
 `;
-        namespaceOutput += `  export type ${inputTypeName} = Partial<Omit<${model.name}, "id">>;
+        namespaceOutput += `  export type ${inputTypeName} = _Partial<Omit<${model.name}, "id">>;
 
 `;
       }
@@ -2095,21 +2306,21 @@ function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) 
    * Make all fields optional
    */
 `;
-  namespaceOutput += `  export type Partial = Partial<${model.name}>;
+  namespaceOutput += `  export type Partial = _Partial<${model.name}>;
 
 `;
   namespaceOutput += `  /**
    * Make all fields required
    */
 `;
-  namespaceOutput += `  export type Required = Required<${model.name}>;
+  namespaceOutput += `  export type Required = _Required<${model.name}>;
 
 `;
   namespaceOutput += `  /**
    * Make all fields readonly
    */
 `;
-  namespaceOutput += `  export type Readonly = Readonly<${model.name}>;
+  namespaceOutput += `  export type Readonly = _Readonly<${model.name}>;
 
 `;
   namespaceOutput += `  /**
@@ -2140,9 +2351,9 @@ function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) 
   return namespaceOutput;
 }
 function generateEnumType(enumType, options) {
-  const { jsDocComments = false, jsonTypeMapping = false } = options;
+  const { jsDocComments = false, jsonTypeMapping = false, namespaceName = "PrismaType", skipModuleHeader = false } = options;
   let output = "";
-  if (jsonTypeMapping) {
+  if (jsonTypeMapping && !skipModuleHeader) {
     output += `// This file must be a module, so we include an empty export.
 `;
     output += `export {};
@@ -2174,11 +2385,16 @@ function generateModelType(model, options) {
     typeMappings,
     jsDocComments = false,
     jsonTypeMapping = false,
-    dataModel
+    namespaceName = "PrismaType",
+    dataModel,
+    enumFileMap,
+    modelFileMap,
+    currentFileName,
+    skipModuleHeader = false
   } = options;
-  const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping);
+  const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping, namespaceName);
   let output = "";
-  if (jsonTypeMapping) {
+  if (jsonTypeMapping && !skipModuleHeader) {
     output += `// This file must be a module, so we include an empty export.
 `;
     output += `export {};
@@ -2187,6 +2403,47 @@ function generateModelType(model, options) {
     output += `/// <reference path="./prisma-json.d.ts" />
 
 `;
+  }
+  const usedEnums = /* @__PURE__ */ new Set();
+  const scalarAndEnumFields = model.fields.filter(
+    (field) => ["scalar", "enum"].includes(field.kind)
+  );
+  const allEnumNames = /* @__PURE__ */ new Set();
+  if (dataModel?.enums) {
+    for (const enumType of dataModel.enums) {
+      allEnumNames.add(enumType.name);
+    }
+  }
+  for (const field of scalarAndEnumFields) {
+    if (field.kind === "enum") {
+      usedEnums.add(field.type);
+    } else if (field.kind === "scalar") {
+      const looseEnum = parseLooseEnumFromComment(field.documentation);
+      if (!looseEnum && field.type && allEnumNames.has(field.type)) {
+        usedEnums.add(field.type);
+      }
+    }
+  }
+  const referencedModels = collectReferencedModels(model, modelFileMap, currentFileName);
+  const imports = [];
+  if (enumFileMap && currentFileName && usedEnums.size > 0) {
+    for (const enumName of usedEnums) {
+      const enumFileName = enumFileMap.get(enumName);
+      if (enumFileName && enumFileName !== currentFileName) {
+        imports.push(`import type { ${enumName} } from "./${enumFileName}";`);
+      }
+    }
+  }
+  if (modelFileMap && currentFileName && referencedModels.size > 0) {
+    for (const modelName of referencedModels) {
+      const modelFileName = modelFileMap.get(modelName);
+      if (modelFileName && modelFileName !== currentFileName) {
+        imports.push(`import type { ${modelName} } from "./${modelFileName}";`);
+      }
+    }
+  }
+  if (imports.length > 0) {
+    output += imports.join("\n") + "\n\n";
   }
   const comment = jsDocComments ? extractJSDoc(model.documentation) : "";
   const jsDoc = comment ? `/**
@@ -2198,9 +2455,6 @@ function generateModelType(model, options) {
   const customTypeName = omitDirective?.typeName;
   output += `${jsDoc}export interface ${model.name} {
 `;
-  const scalarAndEnumFields = model.fields.filter(
-    (field) => ["scalar", "enum"].includes(field.kind)
-  );
   for (const field of scalarAndEnumFields) {
     const fieldComment = jsDocComments ? extractJSDoc(field.documentation) : "";
     let typeScriptType;
@@ -2213,7 +2467,7 @@ function generateModelType(model, options) {
         typeScriptType = `${literalUnion} | (string & {})`;
       }
     } else {
-      const customType = parseTypeMappingFromComment(field.documentation, jsonTypeMapping);
+      const customType = parseTypeMappingFromComment(field.documentation, jsonTypeMapping, namespaceName);
       if (customType) {
         typeScriptType = customType;
       } else {
@@ -2234,7 +2488,9 @@ function generateModelType(model, options) {
     model,
     dataModel,
     omitDirective,
-    jsonTypeMapping
+    jsonTypeMapping,
+    modelFileMap,
+    currentFileName
   );
   if (utilityTypes) {
     output += utilityTypes;
@@ -2251,25 +2507,52 @@ async function onGenerate(options) {
   }
   (0, import_node_fs.mkdirSync)(outputDir, { recursive: true });
   const dataModel = options.dmmf.datamodel;
+  const namespaceName = config.namespaceName || "PrismaType";
   const typeMappings = config.typeMappings || config.jsonTypeMapping ? parseTypeMappings(
     config.typeMappings,
     void 0,
-    config.jsonTypeMapping
+    config.jsonTypeMapping,
+    namespaceName
   ) : void 0;
   if (config.jsonTypeMapping) {
-    const prismaTypeContent = generatePrismaTypeNamespace();
+    const prismaTypeContent = generatePrismaTypeNamespace(namespaceName);
     const prismaTypePath = (0, import_node_path.join)(outputDir, "prisma-json.d.ts");
     (0, import_node_fs.writeFileSync)(prismaTypePath, prismaTypeContent);
   }
   const filteredModels = dataModel.models.filter(
     (model) => shouldIncludeModel(model.name, config.include, config.exclude)
   );
+  const filteredEnums = dataModel.enums.filter(
+    (enumType) => shouldIncludeEnum(enumType.name, config.include, config.exclude)
+  );
   const schemaPath = options.schemaPath || "";
   const schemaFiles = [];
   const files = [];
   if (config.splitBySchema) {
-    const modelGroups = config.enumOnly ? /* @__PURE__ */ new Map() : groupModelsBySchemaFile(filteredModels, schemaFiles);
-    const enumGroups = groupEnumsBySchemaFile(dataModel.enums, schemaFiles);
+    const allItems = [
+      ...config.enumOnly ? [] : filteredModels,
+      ...filteredEnums
+    ];
+    const inferredSchemaNames = inferSchemaFileNames(allItems);
+    const modelGroups = config.enumOnly ? /* @__PURE__ */ new Map() : groupModelsBySchemaFile(filteredModels, schemaFiles, inferredSchemaNames);
+    const enumGroups = groupEnumsBySchemaFile(filteredEnums, schemaFiles, inferredSchemaNames);
+    const enumFileMap = /* @__PURE__ */ new Map();
+    for (const [fileName, fileEnums] of enumGroups.entries()) {
+      for (const enumType of fileEnums) {
+        enumFileMap.set(enumType.name, fileName);
+      }
+    }
+    for (const enumType of dataModel.enums) {
+      if (!enumFileMap.has(enumType.name)) {
+        enumFileMap.set(enumType.name, "enums");
+      }
+    }
+    const modelFileMap = /* @__PURE__ */ new Map();
+    for (const [fileName, fileModels] of modelGroups.entries()) {
+      for (const model of fileModels) {
+        modelFileMap.set(model.name, fileName);
+      }
+    }
     const allFileNames = /* @__PURE__ */ new Set();
     if (!config.enumOnly) {
       modelGroups.forEach((_, fileName) => allFileNames.add(fileName));
@@ -2278,14 +2561,47 @@ async function onGenerate(options) {
     for (const fileName of allFileNames) {
       const fileModels = config.enumOnly ? [] : modelGroups.get(fileName) || [];
       const fileEnums = enumGroups.get(fileName) || [];
-      const typesContent = generateTypes({
-        dataModel,
-        typeMappings,
-        jsDocComments: config.jsDocComments ?? false,
-        models: fileModels,
-        enums: fileEnums,
-        jsonTypeMapping: config.jsonTypeMapping ?? false
-      });
+      if (fileName === "index" && !config.barrelExports && fileModels.length === 0 && fileEnums.length === 0) {
+        continue;
+      }
+      const currentFileName = fileName;
+      let typesContent = "";
+      if (config.jsonTypeMapping && (fileEnums.length > 0 || fileModels.length > 0)) {
+        typesContent += `// This file must be a module, so we include an empty export.
+`;
+        typesContent += `export {};
+
+`;
+        typesContent += `/// <reference path="./prisma-json.d.ts" />
+
+`;
+      }
+      const skipModuleHeader = config.jsonTypeMapping && (fileEnums.length > 0 || fileModels.length > 0);
+      for (const enumType of fileEnums) {
+        const enumContent = generateEnumType(enumType, {
+          jsDocComments: config.jsDocComments ?? false,
+          jsonTypeMapping: config.jsonTypeMapping ?? false,
+          // Need true to apply namespace prefix
+          namespaceName,
+          skipModuleHeader
+        });
+        typesContent += enumContent;
+      }
+      for (const model of fileModels) {
+        const modelContent = generateModelType(model, {
+          typeMappings,
+          jsDocComments: config.jsDocComments ?? false,
+          jsonTypeMapping: config.jsonTypeMapping ?? false,
+          // Need true to apply namespace prefix
+          namespaceName,
+          dataModel,
+          enumFileMap,
+          modelFileMap,
+          currentFileName,
+          skipModuleHeader
+        });
+        typesContent += modelContent;
+      }
       let finalContent = typesContent;
       if (config.global) {
         finalContent += "declare global {\n";
@@ -2299,10 +2615,12 @@ async function onGenerate(options) {
         }
         finalContent += "}\n\n";
       }
-      files.push({
-        name: fileName === "index" ? "index" : fileName,
-        content: finalContent
-      });
+      if (finalContent.trim().length > 0) {
+        files.push({
+          name: currentFileName,
+          content: finalContent
+        });
+      }
     }
     for (const file of files) {
       const filePath = (0, import_node_path.join)(outputDir, `${file.name}.ts`);
@@ -2310,22 +2628,42 @@ async function onGenerate(options) {
     }
     if (config.barrelExports && !config.global) {
       const exports2 = [];
-      for (const fileName of Array.from(allFileNames).sort()) {
+      const generatedFileNames = files.map((f) => f.name).filter((name) => {
+        return name !== "index";
+      });
+      for (const fileName of generatedFileNames.sort()) {
         exports2.push(`export * from "./${fileName}";`);
       }
-      const indexContent = exports2.join("\n") + "\n";
-      (0, import_node_fs.writeFileSync)((0, import_node_path.join)(outputDir, "index.ts"), indexContent);
+      if (exports2.length > 0) {
+        const indexContent = exports2.join("\n") + "\n";
+        (0, import_node_fs.writeFileSync)((0, import_node_path.join)(outputDir, "index.ts"), indexContent);
+      }
     }
     return;
   }
   if (config.splitFiles) {
+    const enumFileMap = /* @__PURE__ */ new Map();
+    for (const enumType of dataModel.enums) {
+      if (shouldIncludeEnum(enumType.name, config.include, config.exclude)) {
+        enumFileMap.set(enumType.name, modelToFileName(enumType.name));
+      }
+    }
+    const modelFileMap = /* @__PURE__ */ new Map();
+    for (const model of filteredModels) {
+      modelFileMap.set(model.name, modelToFileName(model.name));
+    }
     if (!config.enumOnly) {
       for (const model of filteredModels) {
+        const modelFileName = modelToFileName(model.name);
         let modelContent = generateModelType(model, {
           typeMappings,
           jsDocComments: config.jsDocComments ?? false,
           jsonTypeMapping: config.jsonTypeMapping ?? false,
-          dataModel
+          namespaceName,
+          dataModel,
+          enumFileMap,
+          modelFileMap,
+          currentFileName: modelFileName
         });
         if (config.global) {
           modelContent += "declare global {\n";
@@ -2334,15 +2672,16 @@ async function onGenerate(options) {
           modelContent += "}\n\n";
         }
         files.push({
-          name: modelToFileName(model.name),
+          name: modelFileName,
           content: modelContent
         });
       }
     }
-    for (const enumType of dataModel.enums) {
+    for (const enumType of filteredEnums) {
       let enumContent = generateEnumType(enumType, {
         jsDocComments: config.jsDocComments ?? false,
-        jsonTypeMapping: config.jsonTypeMapping ?? false
+        jsonTypeMapping: config.jsonTypeMapping ?? false,
+        namespaceName
       });
       if (config.global) {
         enumContent += "declare global {\n";
@@ -2360,13 +2699,15 @@ async function onGenerate(options) {
       const typesContent = generateTypes({
         dataModel: {
           ...dataModel,
-          models: filteredModels
+          models: filteredModels,
+          enums: filteredEnums
         },
         typeMappings,
         jsDocComments: config.jsDocComments ?? false,
         include: config.include,
         exclude: config.exclude,
-        jsonTypeMapping: config.jsonTypeMapping ?? false
+        jsonTypeMapping: config.jsonTypeMapping ?? false,
+        namespaceName
       });
       let finalTypesContent = typesContent;
       if (config.global) {
@@ -2375,7 +2716,7 @@ async function onGenerate(options) {
           finalTypesContent += `  export type T${model.name} = ${model.name};
 `;
         }
-        for (const enumType of dataModel.enums) {
+        for (const enumType of filteredEnums) {
           finalTypesContent += `  export type T${enumType.name} = ${enumType.name};
 `;
         }
@@ -2389,18 +2730,20 @@ async function onGenerate(options) {
       const enumContent = generateTypes({
         dataModel: {
           ...dataModel,
-          models: []
+          models: [],
+          enums: filteredEnums
         },
         typeMappings,
         jsDocComments: config.jsDocComments ?? false,
         include: config.include,
         exclude: config.exclude,
-        jsonTypeMapping: config.jsonTypeMapping ?? false
+        jsonTypeMapping: config.jsonTypeMapping ?? false,
+        namespaceName
       });
       if (config.global) {
         let globalContent = enumContent;
         globalContent += "declare global {\n";
-        for (const enumType of dataModel.enums) {
+        for (const enumType of filteredEnums) {
           globalContent += `  export type T${enumType.name} = ${enumType.name};
 `;
         }
@@ -2425,7 +2768,12 @@ async function onGenerate(options) {
   if (config.barrelExports && !config.global && files.length > 1) {
     const exports2 = [];
     const fileExports = files.map((f) => {
-      const baseName = f.name.replace(".ts", "").replace(".d.ts", "");
+      let baseName = f.name;
+      if (baseName.endsWith(".d.ts")) {
+        baseName = baseName.slice(0, -5);
+      } else if (baseName.endsWith(".ts")) {
+        baseName = baseName.slice(0, -3);
+      }
       return `export * from "./${baseName}";`;
     }).join("\n");
     exports2.push(fileExports);

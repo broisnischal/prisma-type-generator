@@ -28,6 +28,7 @@ __export(util_exports, {
   getTypeScriptType: () => getTypeScriptType,
   groupEnumsBySchemaFile: () => groupEnumsBySchemaFile,
   groupModelsBySchemaFile: () => groupModelsBySchemaFile,
+  inferSchemaFileNames: () => inferSchemaFileNames,
   modelToFileName: () => modelToFileName,
   parseGroupDirective: () => parseGroupDirective,
   parseInputDirective: () => parseInputDirective,
@@ -39,6 +40,7 @@ __export(util_exports, {
   parseTypeMappings: () => parseTypeMappings,
   parseValidatedDirective: () => parseValidatedDirective,
   parseWithDirective: () => parseWithDirective,
+  shouldIncludeEnum: () => shouldIncludeEnum,
   shouldIncludeModel: () => shouldIncludeModel
 });
 module.exports = __toCommonJS(util_exports);
@@ -54,7 +56,7 @@ function calculatePrismaJsonPath(outputDir) {
   const upPath = "../".repeat(totalDepth);
   return `${upPath}prisma-json.ts`;
 }
-function parseTypeMappings(mappings, defaultMappings, jsonTypeMapping) {
+function parseTypeMappings(mappings, defaultMappings, jsonTypeMapping, namespaceName = "PrismaType") {
   const result = {
     Decimal: "number",
     Int: "number",
@@ -67,7 +69,7 @@ function parseTypeMappings(mappings, defaultMappings, jsonTypeMapping) {
     ...defaultMappings
   };
   if (jsonTypeMapping) {
-    result.Json = "PrismaType.Json";
+    result.Json = `${namespaceName}.Json`;
   } else {
     result.Json = "Record<string, unknown>";
   }
@@ -95,7 +97,7 @@ function extractJSDoc(comment) {
 function parseOmitDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@omit\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  const match = cleanComment.match(/@omit\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?(?=\s*@|\s*$)/);
   if (match && match[1]) {
     const fieldsStr = match[1].trim();
     const typeName = match[2]?.trim();
@@ -112,7 +114,7 @@ function parseOmitDirective(comment) {
 function parsePickDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@pick\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  const match = cleanComment.match(/@pick\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?(?=\s*@|\s*$)/);
   if (match && match[1]) {
     const fieldsStr = match[1].trim();
     const typeName = match[2]?.trim();
@@ -129,7 +131,7 @@ function parsePickDirective(comment) {
 function parseInputDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@input(?:model)?(?:\s+(.+))?$/);
+  const match = cleanComment.match(/@input(?:model)?(?:\s+(.+?))?(?=\s*@|\s*$)/);
   if (match) {
     if (match[1]) {
       const names = match[1].split(",").map((n) => n.trim()).filter((n) => n.length > 0);
@@ -159,7 +161,7 @@ function parseGroupDirective(comment) {
 function parseWithDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@with\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  const match = cleanComment.match(/@with\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?(?=\s*@|\s*$)/);
   if (match && match[1]) {
     const relationsStr = match[1].trim();
     const typeName = match[2]?.trim();
@@ -176,12 +178,12 @@ function parseWithDirective(comment) {
 function parseSelectDirective(comment) {
   if (!comment) return false;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  return /@select(?:\s|$)/.test(cleanComment);
+  return /@select(?=\s|$|@)/.test(cleanComment);
 }
 function parseValidatedDirective(comment) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@validated(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  const match = cleanComment.match(/@validated(?:\s+([A-Z][a-zA-Z0-9]*))?(?=\s*@|\s*$)/);
   if (match) {
     return match[1]?.trim() || "Validated";
   }
@@ -218,24 +220,100 @@ function generateOmitTypeName(omitFields) {
   const connector = parts.length > 1 ? "And" : "";
   return `Without${parts.join(connector)}`;
 }
-function parseTypeMappingFromComment(comment, jsonTypeMapping) {
+function parseTypeMappingFromComment(comment, jsonTypeMapping, namespaceName = "PrismaType") {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  if (cleanComment.startsWith("!")) {
+    const typeDef = cleanComment.substring(1).trim();
+    if (typeDef.startsWith("{")) {
+      let braceCount = 0;
+      let endIndex = -1;
+      for (let i = 0; i < typeDef.length; i++) {
+        if (typeDef[i] === "{") braceCount++;
+        if (typeDef[i] === "}") {
+          braceCount--;
+          if (braceCount === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+      }
+      if (endIndex > 0) {
+        return typeDef.substring(0, endIndex).trim();
+      }
+    }
+    if (typeDef.startsWith("[")) {
+      let bracketCount = 0;
+      let endIndex = -1;
+      for (let i = 0; i < typeDef.length; i++) {
+        if (typeDef[i] === "[") bracketCount++;
+        if (typeDef[i] === "]") {
+          bracketCount--;
+          if (bracketCount === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+      }
+      if (endIndex > 0) {
+        return typeDef.substring(0, endIndex).trim();
+      }
+    }
+    return typeDef;
+  }
   const match = cleanComment.match(/@type\s+(\S+)\s*=\s*(.+)/);
   if (match && match[1] && match[2]) {
     const prismaType = match[1].trim();
     let typeName = match[2].trim();
     typeName = typeName.replace(/\s*\/\/.*$/, "").trim();
+    if (typeName.startsWith("!")) {
+      const inlineType = typeName.substring(1).trim();
+      if (inlineType.startsWith("{")) {
+        let braceCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < inlineType.length; i++) {
+          if (inlineType[i] === "{") braceCount++;
+          if (inlineType[i] === "}") {
+            braceCount--;
+            if (braceCount === 0) {
+              endIndex = i + 1;
+              break;
+            }
+          }
+        }
+        if (endIndex > 0) {
+          return inlineType.substring(0, endIndex).trim();
+        }
+      }
+      if (inlineType.startsWith("[")) {
+        let bracketCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < inlineType.length; i++) {
+          if (inlineType[i] === "[") bracketCount++;
+          if (inlineType[i] === "]") {
+            bracketCount--;
+            if (bracketCount === 0) {
+              endIndex = i + 1;
+              break;
+            }
+          }
+        }
+        if (endIndex > 0) {
+          return inlineType.substring(0, endIndex).trim();
+        }
+      }
+      return inlineType;
+    }
     if (prismaType === "Json" && jsonTypeMapping) {
       if (typeName === "any" || typeName === "Json") {
-        return "PrismaType.Json";
+        return `${namespaceName}.Json`;
       }
-      if (typeName.startsWith("PrismaType.")) {
+      if (typeName.startsWith(`${namespaceName}.`)) {
         return typeName;
       }
       const isSimpleIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(typeName);
       if (isSimpleIdentifier) {
-        return `PrismaType.${typeName}`;
+        return `${namespaceName}.${typeName}`;
       }
       const typeKeywords = /* @__PURE__ */ new Set([
         "string",
@@ -256,6 +334,8 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
       ]);
       let result = typeName;
       let offset = 0;
+      const namespacePrefix = `${namespaceName}.`;
+      const namespacePrefixLength = namespacePrefix.length;
       const matches = Array.from(
         typeName.matchAll(/\b([A-Z][a-zA-Z0-9_$]*)\b/g)
       );
@@ -266,16 +346,16 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
           continue;
         }
         const beforeMatch = result.substring(
-          Math.max(0, matchIndex + offset - 11),
+          Math.max(0, matchIndex + offset - namespacePrefixLength),
           matchIndex + offset
         );
-        if (beforeMatch === "PrismaType.") {
+        if (beforeMatch === namespacePrefix) {
           continue;
         }
         const before = result.substring(0, matchIndex + offset);
         const after = result.substring(matchIndex + offset + identifier.length);
-        result = before + `PrismaType.${identifier}` + after;
-        offset += 11;
+        result = before + `${namespacePrefix}${identifier}` + after;
+        offset += namespacePrefixLength;
       }
       return result;
     }
@@ -284,17 +364,55 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
   const simpleMatch = cleanComment.match(/@type\s+(\S+)=(\S+)/);
   if (simpleMatch) {
     const prismaType = simpleMatch[1];
-    const typeName = simpleMatch[2];
+    let typeName = simpleMatch[2];
+    if (typeName.startsWith("!")) {
+      const inlineType = typeName.substring(1).trim();
+      if (inlineType.startsWith("{")) {
+        let braceCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < inlineType.length; i++) {
+          if (inlineType[i] === "{") braceCount++;
+          if (inlineType[i] === "}") {
+            braceCount--;
+            if (braceCount === 0) {
+              endIndex = i + 1;
+              break;
+            }
+          }
+        }
+        if (endIndex > 0) {
+          return inlineType.substring(0, endIndex).trim();
+        }
+      }
+      if (inlineType.startsWith("[")) {
+        let bracketCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < inlineType.length; i++) {
+          if (inlineType[i] === "[") bracketCount++;
+          if (inlineType[i] === "]") {
+            bracketCount--;
+            if (bracketCount === 0) {
+              endIndex = i + 1;
+              break;
+            }
+          }
+        }
+        if (endIndex > 0) {
+          return inlineType.substring(0, endIndex).trim();
+        }
+      }
+      return inlineType;
+    }
     if (prismaType === "Json" && jsonTypeMapping) {
       if (typeName === "any" || typeName === "Json") {
-        return "PrismaType.Json";
+        return `${namespaceName}.Json`;
       }
-      if (typeName.startsWith("PrismaType.")) {
+      if (typeName.startsWith(`${namespaceName}.`)) {
         return typeName;
       }
       const isSimpleIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(typeName);
       if (isSimpleIdentifier) {
-        return `PrismaType.${typeName}`;
+        return `${namespaceName}.${typeName}`;
       }
       const typeKeywords = /* @__PURE__ */ new Set([
         "string",
@@ -315,6 +433,8 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
       ]);
       let result = typeName;
       let offset = 0;
+      const namespacePrefix = `${namespaceName}.`;
+      const namespacePrefixLength = namespacePrefix.length;
       const matches = Array.from(
         typeName.matchAll(/\b([A-Z][a-zA-Z0-9_$]*)\b/g)
       );
@@ -325,16 +445,16 @@ function parseTypeMappingFromComment(comment, jsonTypeMapping) {
           continue;
         }
         const beforeMatch = result.substring(
-          Math.max(0, matchIndex + offset - 11),
+          Math.max(0, matchIndex + offset - namespacePrefixLength),
           matchIndex + offset
         );
-        if (beforeMatch === "PrismaType.") {
+        if (beforeMatch === namespacePrefix) {
           continue;
         }
         const before = result.substring(0, matchIndex + offset);
         const after = result.substring(matchIndex + offset + identifier.length);
-        result = before + `PrismaType.${identifier}` + after;
-        offset += 11;
+        result = before + `${namespacePrefix}${identifier}` + after;
+        offset += namespacePrefixLength;
       }
       return result;
     }
@@ -372,13 +492,43 @@ function shouldIncludeModel(modelName, include, exclude) {
   }
   return true;
 }
+function shouldIncludeEnum(enumName, include, exclude) {
+  if (exclude) {
+    const excludeList = exclude.split(",").map((s) => s.trim());
+    if (excludeList.includes(enumName)) {
+      return false;
+    }
+  }
+  if (include) {
+    const includeList = include.split(",").map((s) => s.trim());
+    return includeList.includes(enumName);
+  }
+  return true;
+}
 function modelToFileName(modelName) {
   return modelName.charAt(0).toLowerCase() + modelName.slice(1);
 }
-function getSchemaFileNameForModel(modelName, schemaFiles) {
+function inferSchemaFileNames(items) {
+  const schemaNames = /* @__PURE__ */ new Set();
+  for (const item of items) {
+    const match = item.name.match(/^([A-Z][a-z]+)/);
+    if (match) {
+      const prefix = match[1].toLowerCase();
+      schemaNames.add(prefix);
+    }
+  }
+  return schemaNames;
+}
+function getSchemaFileNameForModel(modelName, schemaFiles, inferredSchemaNames) {
   const baseNames = [];
   if (schemaFiles && schemaFiles.length > 0) {
     schemaFiles.map((file) => file.replace(/\.prisma$/, "").toLowerCase()).filter((name) => name !== "schema").forEach((name) => baseNames.push(name));
+  }
+  const allSchemaNames = inferredSchemaNames || /* @__PURE__ */ new Set();
+  if (allSchemaNames.size > 0) {
+    for (const schemaName of allSchemaNames) {
+      baseNames.push(schemaName);
+    }
   }
   for (const baseName of baseNames) {
     const prefix = baseName.charAt(0).toUpperCase() + baseName.slice(1);
@@ -392,37 +542,46 @@ function getSchemaFileNameForModel(modelName, schemaFiles) {
     if (baseNames.length > 0 && baseNames.includes(prefix)) {
       return prefix;
     }
-    if (["post", "user", "test"].includes(prefix)) {
+    if (baseNames.length > 0) {
+      for (const baseName of baseNames) {
+        if (baseName === prefix || baseName.startsWith(prefix) || prefix.startsWith(baseName)) {
+          return baseName;
+        }
+      }
+    }
+    if (allSchemaNames.size > 0 && allSchemaNames.has(prefix)) {
       return prefix;
     }
   }
-  return "index";
+  return null;
 }
-function groupModelsBySchemaFile(models, schemaFiles) {
+function groupModelsBySchemaFile(models, schemaFiles, inferredSchemaNames) {
   const groups = /* @__PURE__ */ new Map();
   for (const model of models) {
-    const fileName = getSchemaFileNameForModel(model.name, schemaFiles);
-    if (!groups.has(fileName)) {
-      groups.set(fileName, []);
+    const fileName = getSchemaFileNameForModel(model.name, schemaFiles, inferredSchemaNames);
+    const fileKey = fileName || "index";
+    if (!groups.has(fileKey)) {
+      groups.set(fileKey, []);
     }
-    groups.get(fileName).push(model);
+    groups.get(fileKey).push(model);
   }
   return groups;
 }
-function groupEnumsBySchemaFile(enums, schemaFiles) {
+function groupEnumsBySchemaFile(enums, schemaFiles, inferredSchemaNames) {
   const groups = /* @__PURE__ */ new Map();
   for (const enumType of enums) {
-    const fileName = getSchemaFileNameForModel(enumType.name, schemaFiles);
-    if (!groups.has(fileName)) {
-      groups.set(fileName, []);
+    const fileName = getSchemaFileNameForModel(enumType.name, schemaFiles, inferredSchemaNames);
+    const fileKey = fileName || "enums";
+    if (!groups.has(fileKey)) {
+      groups.set(fileKey, []);
     }
-    groups.get(fileName).push(enumType);
+    groups.get(fileKey).push(enumType);
   }
   return groups;
 }
-function generatePrismaTypeNamespace() {
+function generatePrismaTypeNamespace(namespaceName = "PrismaType") {
   return `/**
- * PrismaType namespace for custom type mappings
+ * ${namespaceName} namespace for custom type mappings
  * This namespace is used when jsonTypeMapping is enabled
  * 
  * IMPORTANT: To extend this namespace with your own interfaces (like UserPreferences),
@@ -433,7 +592,7 @@ function generatePrismaTypeNamespace() {
  * export {};
  * 
  * declare global {
- *   namespace PrismaType {
+ *   namespace ${namespaceName} {
  *     interface Json {
  *       [key: string]: any; // Customize as needed
  *     }
@@ -448,17 +607,17 @@ function generatePrismaTypeNamespace() {
  * 
  * Then in your Prisma schema:
  * /// @type Json=UserPreferences
- * preferences Json  // Will use PrismaType.UserPreferences via namespace merging
+ * preferences Json  // Will use ${namespaceName}.UserPreferences via namespace merging
  * 
  * Or use inline types:
  * /// @type Json=any
- * metadata Json  // Uses PrismaType.Json
+ * metadata Json  // Uses ${namespaceName}.Json
  */
 // This file must be a module, so we include an empty export.
 export {};
 
 declare global {
-  namespace PrismaType {
+  namespace ${namespaceName} {
     interface Json {
       [key: string]: any;
     }
@@ -476,6 +635,7 @@ declare global {
   getTypeScriptType,
   groupEnumsBySchemaFile,
   groupModelsBySchemaFile,
+  inferSchemaFileNames,
   modelToFileName,
   parseGroupDirective,
   parseInputDirective,
@@ -487,5 +647,6 @@ declare global {
   parseTypeMappings,
   parseValidatedDirective,
   parseWithDirective,
+  shouldIncludeEnum,
   shouldIncludeModel
 });

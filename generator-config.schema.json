@@ -41,6 +41,11 @@
       "description": "Enable JSON type mapping using PrismaType namespace. When enabled, creates a PrismaType namespace with Json interface. Json fields will use PrismaType.Json instead of Record<string, unknown>",
       "default": false
     },
+    "namespaceName": {
+      "type": "string",
+      "description": "Custom namespace name for JSON type mapping. When jsonTypeMapping is enabled, this namespace will be used instead of the default 'PrismaType'",
+      "default": "PrismaType"
+    },
     "jsDocComments": {
       "type": "boolean",
       "description": "Generate JSDoc comments from Prisma schema comments",
