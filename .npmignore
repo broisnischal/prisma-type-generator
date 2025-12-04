@@ -1,2 +1,52 @@
-prisma
+# Source files (only dist should be published)
+src/
+tsconfig.json
+
+# Development and build files
 biome.json
+*.log
+*.tsbuildinfo
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__/
+test/
+tests/
+
+# Development dependencies
+node_modules/
+package-lock.json
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation (README.md and LICENSE are included by default)
+FEATURES.md
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Prisma files (if any)
+prisma/
+*.prisma
+
+# Other
+.DS_Store
+.env
+.env.*
+*.local
