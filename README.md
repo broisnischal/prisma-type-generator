@@ -969,8 +969,15 @@ After running `npx prisma generate`, you'll get:
 
 ### Advanced Features
 
-- ✅ **Zod Schema Generation** - Generate Zod validation schemas
-- ✅ **Utility Types** - Pick, Omit, Partial, Required for each model
+- ✅ **Input Types (DTOs)** - Generate `CreateInput` and `UpdateInput` types with `@input` or `@inputmodel` directive
+- ✅ **Basic Utility Types** - Always generated: `Partial`, `Required`, `Readonly` for each model
+- ✅ **Select Types** - Generate Prisma query select types with `@select` directive
+- ✅ **Deep Utility Types** - Always generated: `DeepPartial` and `DeepRequired` for nested objects
+- ✅ **Relation Types** - Generate types with relations using `@with` directive (e.g., `WithPosts`, `WithProfile`)
+- ✅ **Field Groups** - Group related fields together with `@group` directive
+- ✅ **Validation Types** - Generate validated types with `@validated` directive
+- ✅ **Omit Types** - Generate types excluding specific fields with `@omit` directive
+- ✅ **Pick Types** - Generate types with only specific fields with `@pick` directive
 - ✅ **JSON Type Support** - Full support for Prisma Json type with `PrismaType` namespace support
 - ✅ **Loose Autocomplete Enums** - Create enum-like String types with autocomplete support (strict or loose mode)
 - ✅ **Model Filtering** - Include/exclude specific models
@@ -980,8 +987,8 @@ After running `npx prisma generate`, you'll get:
 - ✅ **Split Files** - Separate files per feature
 - ✅ **Barrel Exports** - Auto-generated index.ts files
 - ✅ **Comment-based Type Mapping** - Use `/// @type` comments in schema
-- ⚙️ **DTO Generation** (Optional) - Create/Update DTO types
-- ⚙️ **Type Guards** (Optional) - Runtime type guard functions
+
+📖 **[See Complete Features Documentation →](./FEATURES.md)** - Detailed guide with examples for all utility types and directives
 
 ### Contributing
 

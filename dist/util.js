@@ -29,10 +29,16 @@ __export(util_exports, {
   groupEnumsBySchemaFile: () => groupEnumsBySchemaFile,
   groupModelsBySchemaFile: () => groupModelsBySchemaFile,
   modelToFileName: () => modelToFileName,
+  parseGroupDirective: () => parseGroupDirective,
+  parseInputDirective: () => parseInputDirective,
   parseLooseEnumFromComment: () => parseLooseEnumFromComment,
   parseOmitDirective: () => parseOmitDirective,
+  parsePickDirective: () => parsePickDirective,
+  parseSelectDirective: () => parseSelectDirective,
   parseTypeMappingFromComment: () => parseTypeMappingFromComment,
   parseTypeMappings: () => parseTypeMappings,
+  parseValidatedDirective: () => parseValidatedDirective,
+  parseWithDirective: () => parseWithDirective,
   shouldIncludeModel: () => shouldIncludeModel
 });
 module.exports = __toCommonJS(util_exports);
@@ -100,6 +106,84 @@ function parseOmitDirective(comment) {
         typeName: typeName || void 0
       };
     }
+  }
+  return null;
+}
+function parsePickDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@pick\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match && match[1]) {
+    const fieldsStr = match[1].trim();
+    const typeName = match[2]?.trim();
+    const fields = fieldsStr.split(",").map((f) => f.trim()).filter((f) => f.length > 0);
+    if (fields.length > 0) {
+      return {
+        fields,
+        typeName: typeName || void 0
+      };
+    }
+  }
+  return null;
+}
+function parseInputDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@input(?:model)?(?:\s+(.+))?$/);
+  if (match) {
+    if (match[1]) {
+      const names = match[1].split(",").map((n) => n.trim()).filter((n) => n.length > 0);
+      return names.length > 0 ? names : null;
+    }
+    return ["CreateInput", "UpdateInput"];
+  }
+  return null;
+}
+function parseGroupDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const groups = /* @__PURE__ */ new Map();
+  const matches = Array.from(
+    cleanComment.matchAll(/@group\s+(\w+)\s+(.+?)(?=\s*@|\s*$)/g)
+  );
+  for (const match of matches) {
+    const groupName = match[1].trim();
+    const fieldsStr = match[2].trim();
+    const fields = fieldsStr.split(",").map((f) => f.trim()).filter((f) => f.length > 0);
+    if (groupName && fields.length > 0) {
+      groups.set(groupName, fields);
+    }
+  }
+  return groups.size > 0 ? groups : null;
+}
+function parseWithDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@with\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match && match[1]) {
+    const relationsStr = match[1].trim();
+    const typeName = match[2]?.trim();
+    const relations = relationsStr.split(",").map((r) => r.trim()).filter((r) => r.length > 0);
+    if (relations.length > 0) {
+      return {
+        relations,
+        typeName: typeName || void 0
+      };
+    }
+  }
+  return null;
+}
+function parseSelectDirective(comment) {
+  if (!comment) return false;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  return /@select(?:\s|$)/.test(cleanComment);
+}
+function parseValidatedDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@validated(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match) {
+    return match[1]?.trim() || "Validated";
   }
   return null;
 }
@@ -393,9 +477,15 @@ declare global {
   groupEnumsBySchemaFile,
   groupModelsBySchemaFile,
   modelToFileName,
+  parseGroupDirective,
+  parseInputDirective,
   parseLooseEnumFromComment,
   parseOmitDirective,
+  parsePickDirective,
+  parseSelectDirective,
   parseTypeMappingFromComment,
   parseTypeMappings,
+  parseValidatedDirective,
+  parseWithDirective,
   shouldIncludeModel
 });

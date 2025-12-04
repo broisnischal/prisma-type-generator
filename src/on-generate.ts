@@ -11,7 +11,11 @@ import {
   modelToFileName,
   type TypeMapping,
 } from "./util";
-import { generateTypes, generateModelType, generateEnumType } from "./generators/types";
+import {
+  generateTypes,
+  generateModelType,
+  generateEnumType,
+} from "./generators/types";
 
 export async function onGenerate(options: GeneratorOptions) {
   const config = parseConfig(options.generator.config);
@@ -29,9 +33,14 @@ export async function onGenerate(options: GeneratorOptions) {
   const dataModel = options.dmmf.datamodel;
 
   // Parse type mappings (pass jsonTypeMapping to handle Json type separately)
-  const typeMappings = config.typeMappings || config.jsonTypeMapping
-    ? parseTypeMappings(config.typeMappings, undefined, config.jsonTypeMapping)
-    : undefined;
+  const typeMappings =
+    config.typeMappings || config.jsonTypeMapping
+      ? parseTypeMappings(
+          config.typeMappings,
+          undefined,
+          config.jsonTypeMapping
+        )
+      : undefined;
 
   // Generate PrismaType namespace file if jsonTypeMapping is enabled
   if (config.jsonTypeMapping) {
@@ -49,16 +58,16 @@ export async function onGenerate(options: GeneratorOptions) {
   // Prisma schema path format: "prisma/schema/post.prisma" or similar
   const schemaPath = options.schemaPath || "";
   const schemaFiles: string[] = [];
-  
+
   // Extract schema file names if available (this is a best-effort approach)
   // Since Prisma merges all files, we'll use naming convention instead
-  
+
   const files: Array<{ name: string; content: string }> = [];
 
   // Handle splitBySchema feature
   if (config.splitBySchema) {
     // Group models and enums by schema file using naming convention
-    const modelGroups = config.enumOnly 
+    const modelGroups = config.enumOnly
       ? new Map<string, typeof filteredModels>()
       : groupModelsBySchemaFile(filteredModels, schemaFiles);
     const enumGroups = groupEnumsBySchemaFile(dataModel.enums, schemaFiles);
@@ -71,7 +80,7 @@ export async function onGenerate(options: GeneratorOptions) {
     enumGroups.forEach((_, fileName) => allFileNames.add(fileName));
 
     for (const fileName of allFileNames) {
-      const fileModels = config.enumOnly ? [] : (modelGroups.get(fileName) || []);
+      const fileModels = config.enumOnly ? [] : modelGroups.get(fileName) || [];
       const fileEnums = enumGroups.get(fileName) || [];
 
       // Generate types for this schema file
@@ -133,6 +142,7 @@ export async function onGenerate(options: GeneratorOptions) {
           typeMappings,
           jsDocComments: config.jsDocComments ?? false,
           jsonTypeMapping: config.jsonTypeMapping ?? false,
+          dataModel,
         });
 
         // Add global types if requested
@@ -241,9 +251,10 @@ export async function onGenerate(options: GeneratorOptions) {
 
   // Write all files
   for (const file of files) {
-    const fileName = file.name.endsWith(".ts") || file.name.endsWith(".d.ts")
-      ? file.name
-      : `${file.name}.ts`;
+    const fileName =
+      file.name.endsWith(".ts") || file.name.endsWith(".d.ts")
+        ? file.name
+        : `${file.name}.ts`;
     const filePath = join(outputDir, fileName);
     writeFileSync(filePath, file.content);
   }

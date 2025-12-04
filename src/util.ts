@@ -119,6 +119,193 @@ export function parseOmitDirective(
 }
 
 /**
+ * Parse @pick directive from Prisma model comment
+ * Format: /// @pick id,name,email
+ * Format: /// @pick id,name,email UserBasic
+ * Returns object with fields to pick and optional type name, or null if not found
+ */
+export function parsePickDirective(
+  comment?: string | null
+): { fields: string[]; typeName?: string } | null {
+  if (!comment) return null;
+
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  const match = cleanComment.match(/@pick\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match && match[1]) {
+    const fieldsStr = match[1].trim();
+    const typeName = match[2]?.trim();
+
+    const fields = fieldsStr
+      .split(",")
+      .map((f) => f.trim())
+      .filter((f) => f.length > 0);
+
+    if (fields.length > 0) {
+      return {
+        fields,
+        typeName: typeName || undefined,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse @input or @inputmodel directive from Prisma model comment
+ * Format: /// @input
+ * Format: /// @input CreateInput,UpdateInput
+ * Format: /// @inputmodel
+ * Format: /// @inputmodel CreateInput,UpdateInput
+ * Returns array of input type names to generate, or null if not found
+ */
+export function parseInputDirective(comment?: string | null): string[] | null {
+  if (!comment) return null;
+
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  // Support both @input and @inputmodel directives
+  const match = cleanComment.match(/@input(?:model)?(?:\s+(.+))?$/);
+  if (match) {
+    if (match[1]) {
+      // Custom input type names
+      const names = match[1]
+        .split(",")
+        .map((n) => n.trim())
+        .filter((n) => n.length > 0);
+      return names.length > 0 ? names : null;
+    }
+    // Default: generate CreateInput and UpdateInput
+    return ["CreateInput", "UpdateInput"];
+  }
+
+  return null;
+}
+
+/**
+ * Parse @group directive from Prisma model comment
+ * Format: /// @group timestamps createdAt,updatedAt
+ * Format: /// @group auth password,email
+ * Returns map of group names to field arrays, or null if not found
+ */
+export function parseGroupDirective(
+  comment?: string | null
+): Map<string, string[]> | null {
+  if (!comment) return null;
+
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  const groups = new Map<string, string[]>();
+  const matches = Array.from(
+    cleanComment.matchAll(/@group\s+(\w+)\s+(.+?)(?=\s*@|\s*$)/g)
+  );
+
+  for (const match of matches) {
+    const groupName = match[1].trim();
+    const fieldsStr = match[2].trim();
+    const fields = fieldsStr
+      .split(",")
+      .map((f) => f.trim())
+      .filter((f) => f.length > 0);
+
+    if (groupName && fields.length > 0) {
+      groups.set(groupName, fields);
+    }
+  }
+
+  return groups.size > 0 ? groups : null;
+}
+
+/**
+ * Parse @with directive from Prisma model comment (for relation types)
+ * Format: /// @with posts
+ * Format: /// @with posts,profile
+ * Format: /// @with posts WithPosts
+ * Returns object with relations to include and optional type name, or null if not found
+ */
+export function parseWithDirective(
+  comment?: string | null
+): { relations: string[]; typeName?: string } | null {
+  if (!comment) return null;
+
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  // Match @with followed by comma-separated relation names and optional type name
+  const match = cleanComment.match(/@with\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match && match[1]) {
+    const relationsStr = match[1].trim();
+    const typeName = match[2]?.trim();
+
+    const relations = relationsStr
+      .split(",")
+      .map((r) => r.trim())
+      .filter((r) => r.length > 0);
+
+    if (relations.length > 0) {
+      return {
+        relations,
+        typeName: typeName || undefined,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse @select directive from Prisma model comment
+ * Format: /// @select
+ * Returns true if select types should be generated, false otherwise
+ */
+export function parseSelectDirective(comment?: string | null): boolean {
+  if (!comment) return false;
+
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  return /@select(?:\s|$)/.test(cleanComment);
+}
+
+/**
+ * Parse @validated directive from Prisma model comment
+ * Format: /// @validated
+ * Format: /// @validated Validated
+ * Returns type name or null
+ */
+export function parseValidatedDirective(
+  comment?: string | null
+): string | null {
+  if (!comment) return null;
+
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  const match = cleanComment.match(/@validated(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match) {
+    return match[1]?.trim() || "Validated";
+  }
+
+  return null;
+}
+
+/**
  * Generate a semantic type name for omitted fields
  * Examples:
  * - ["createdAt", "updatedAt"] -> "WithoutTimestamps"

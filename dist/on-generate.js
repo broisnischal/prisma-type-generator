@@ -110,6 +110,84 @@ function parseOmitDirective(comment) {
   }
   return null;
 }
+function parsePickDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@pick\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match && match[1]) {
+    const fieldsStr = match[1].trim();
+    const typeName = match[2]?.trim();
+    const fields = fieldsStr.split(",").map((f) => f.trim()).filter((f) => f.length > 0);
+    if (fields.length > 0) {
+      return {
+        fields,
+        typeName: typeName || void 0
+      };
+    }
+  }
+  return null;
+}
+function parseInputDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@input(?:model)?(?:\s+(.+))?$/);
+  if (match) {
+    if (match[1]) {
+      const names = match[1].split(",").map((n) => n.trim()).filter((n) => n.length > 0);
+      return names.length > 0 ? names : null;
+    }
+    return ["CreateInput", "UpdateInput"];
+  }
+  return null;
+}
+function parseGroupDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const groups = /* @__PURE__ */ new Map();
+  const matches = Array.from(
+    cleanComment.matchAll(/@group\s+(\w+)\s+(.+?)(?=\s*@|\s*$)/g)
+  );
+  for (const match of matches) {
+    const groupName = match[1].trim();
+    const fieldsStr = match[2].trim();
+    const fields = fieldsStr.split(",").map((f) => f.trim()).filter((f) => f.length > 0);
+    if (groupName && fields.length > 0) {
+      groups.set(groupName, fields);
+    }
+  }
+  return groups.size > 0 ? groups : null;
+}
+function parseWithDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@with\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match && match[1]) {
+    const relationsStr = match[1].trim();
+    const typeName = match[2]?.trim();
+    const relations = relationsStr.split(",").map((r) => r.trim()).filter((r) => r.length > 0);
+    if (relations.length > 0) {
+      return {
+        relations,
+        typeName: typeName || void 0
+      };
+    }
+  }
+  return null;
+}
+function parseSelectDirective(comment) {
+  if (!comment) return false;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  return /@select(?:\s|$)/.test(cleanComment);
+}
+function parseValidatedDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@validated(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match) {
+    return match[1]?.trim() || "Validated";
+  }
+  return null;
+}
 function generateOmitTypeName(omitFields) {
   const timestampFields = /* @__PURE__ */ new Set(["createdAt", "updatedAt"]);
   const isTimestamps = omitFields.every((f) => timestampFields.has(f));
@@ -482,28 +560,223 @@ function generateTypes(options) {
 `;
     }
     output += "}\n\n";
-    if (omitFields.length > 0) {
-      const omitUnion = omitFields.map((f) => `"${f}"`).join(" | ");
-      const typeName = customTypeName || generateOmitTypeName(omitFields);
-      output += `/**
+    const utilityTypes = generateUtilityTypes(
+      model,
+      dataModel,
+      omitDirective,
+      jsonTypeMapping
+    );
+    if (utilityTypes) {
+      output += utilityTypes;
+    }
+  }
+  return output;
+}
+function generateUtilityTypes(model, dataModel, omitDirective, jsonTypeMapping) {
+  let namespaceOutput = `/**
  * Utility types for ${model.name}
  */
 `;
-      output += `export namespace ${model.name} {
+  namespaceOutput += `export namespace ${model.name} {
 `;
-      output += `  /**
-   * ${model.name} without ${omitFields.join(", ")}
-   * Usage: type UserInput = ${model.name}.${typeName};
+  const scalarAndEnumFields = model.fields.filter(
+    (field) => ["scalar", "enum"].includes(field.kind)
+  );
+  const allFieldNames = scalarAndEnumFields.map((f) => f.name);
+  const relationFields = model.fields.filter(
+    (field) => field.kind !== "scalar" && field.kind !== "enum" && field.relationName !== void 0
+  );
+  if (omitDirective && omitDirective.fields.length > 0) {
+    const omitUnion = omitDirective.fields.map((f) => `"${f}"`).join(" | ");
+    const typeName = omitDirective.typeName || generateOmitTypeName(omitDirective.fields);
+    namespaceOutput += `  /**
+   * ${model.name} without ${omitDirective.fields.join(", ")}
    */
 `;
-      output += `  export type ${typeName} = Omit<${model.name}, ${omitUnion}>;
+    namespaceOutput += `  export type ${typeName} = Omit<${model.name}, ${omitUnion}>;
+
 `;
-      output += `}
+  }
+  const pickDirective = parsePickDirective(model.documentation);
+  if (pickDirective && pickDirective.fields.length > 0) {
+    const pickUnion = pickDirective.fields.map((f) => `"${f}"`).join(" | ");
+    const typeName = pickDirective.typeName || `Pick${pickDirective.fields.map((f) => f.charAt(0).toUpperCase() + f.slice(1)).join("")}`;
+    namespaceOutput += `  /**
+   * ${model.name} with only ${pickDirective.fields.join(", ")}
+   */
+`;
+    namespaceOutput += `  export type ${typeName} = Pick<${model.name}, ${pickUnion}>;
+
+`;
+  }
+  const inputTypes = parseInputDirective(model.documentation);
+  if (inputTypes) {
+    for (const inputTypeName of inputTypes) {
+      if (inputTypeName === "CreateInput") {
+        const excludeFields = model.fields.filter((f) => {
+          return f.isId || f.name === "createdAt" || f.name === "updatedAt" || f.hasDefaultValue && f.name !== "createdAt" && f.name !== "updatedAt";
+        }).map((f) => f.name).filter((f) => allFieldNames.includes(f));
+        if (excludeFields.length > 0) {
+          const excludeUnion = excludeFields.map((f) => `"${f}"`).join(" | ");
+          namespaceOutput += `  /**
+   * Input type for creating ${model.name} (omits id, createdAt, updatedAt)
+   */
+`;
+          namespaceOutput += `  export type ${inputTypeName} = Omit<${model.name}, ${excludeUnion}>;
+
+`;
+        } else {
+          namespaceOutput += `  /**
+   * Input type for creating ${model.name}
+   */
+`;
+          namespaceOutput += `  export type ${inputTypeName} = ${model.name};
+
+`;
+        }
+      } else if (inputTypeName === "UpdateInput") {
+        const excludeFields = model.fields.filter((f) => f.isId).map((f) => f.name);
+        if (excludeFields.length > 0) {
+          const excludeUnion = excludeFields.map((f) => `"${f}"`).join(" | ");
+          namespaceOutput += `  /**
+   * Input type for updating ${model.name} (all fields optional, omits id)
+   */
+`;
+          namespaceOutput += `  export type ${inputTypeName} = Partial<Omit<${model.name}, ${excludeUnion}>>;
+
+`;
+        } else {
+          namespaceOutput += `  /**
+   * Input type for updating ${model.name} (all fields optional)
+   */
+`;
+          namespaceOutput += `  export type ${inputTypeName} = Partial<${model.name}>;
+
+`;
+        }
+      } else {
+        namespaceOutput += `  /**
+   * Custom input type: ${inputTypeName}
+   */
+`;
+        namespaceOutput += `  export type ${inputTypeName} = Partial<Omit<${model.name}, "id">>;
+
+`;
+      }
+    }
+  }
+  const groups = parseGroupDirective(model.documentation);
+  if (groups) {
+    for (const [groupName, fields] of groups.entries()) {
+      const pickUnion = fields.map((f) => `"${f}"`).join(" | ");
+      const typeName = `${groupName.charAt(0).toUpperCase() + groupName.slice(1)}Fields`;
+      namespaceOutput += `  /**
+   * ${groupName} fields: ${fields.join(", ")}
+   */
+`;
+      namespaceOutput += `  export type ${typeName} = Pick<${model.name}, ${pickUnion}>;
 
 `;
     }
   }
-  return output;
+  const withDirective = parseWithDirective(model.documentation);
+  if (withDirective && withDirective.relations.length > 0) {
+    const relationTypes = [];
+    for (const relationName of withDirective.relations) {
+      const relationField = relationFields.find((f) => f.name === relationName);
+      if (relationField) {
+        const relationType = relationField.type;
+        const isArray = relationField.isList;
+        const typeStr = isArray ? `${relationType}[]` : relationType;
+        relationTypes.push(`    ${relationName}: ${typeStr};`);
+      }
+    }
+    if (relationTypes.length > 0) {
+      const typeName = withDirective.typeName || `With${withDirective.relations.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join("")}`;
+      namespaceOutput += `  /**
+   * ${model.name} with relations: ${withDirective.relations.join(", ")}
+   */
+`;
+      namespaceOutput += `  export type ${typeName} = ${model.name} & {
+`;
+      namespaceOutput += relationTypes.join("\n");
+      namespaceOutput += `
+  };
+
+`;
+    }
+  }
+  if (parseSelectDirective(model.documentation)) {
+    const selectFields = allFieldNames.map((f) => `    ${f}?: boolean;`).join("\n");
+    namespaceOutput += `  /**
+   * Select type for Prisma queries
+   */
+`;
+    namespaceOutput += `  export type Select = {
+`;
+    namespaceOutput += selectFields;
+    namespaceOutput += `
+  };
+
+`;
+  }
+  const validatedTypeName = parseValidatedDirective(model.documentation);
+  if (validatedTypeName) {
+    namespaceOutput += `  /**
+   * Validated ${model.name} type
+   */
+`;
+    namespaceOutput += `  export type ${validatedTypeName} = ${model.name} & { __validated: true };
+
+`;
+  }
+  namespaceOutput += `  /**
+   * Make all fields optional
+   */
+`;
+  namespaceOutput += `  export type Partial = Partial<${model.name}>;
+
+`;
+  namespaceOutput += `  /**
+   * Make all fields required
+   */
+`;
+  namespaceOutput += `  export type Required = Required<${model.name}>;
+
+`;
+  namespaceOutput += `  /**
+   * Make all fields readonly
+   */
+`;
+  namespaceOutput += `  export type Readonly = Readonly<${model.name}>;
+
+`;
+  namespaceOutput += `  /**
+   * Deep partial (recursive)
+   */
+`;
+  namespaceOutput += `  export type DeepPartial<T = ${model.name}> = {
+`;
+  namespaceOutput += `    [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+`;
+  namespaceOutput += `  };
+
+`;
+  namespaceOutput += `  /**
+   * Deep required (recursive)
+   */
+`;
+  namespaceOutput += `  export type DeepRequired<T = ${model.name}> = {
+`;
+  namespaceOutput += `    [P in keyof T]-?: T[P] extends object ? DeepRequired<T[P]> : T[P];
+`;
+  namespaceOutput += `  };
+
+`;
+  namespaceOutput += `}
+
+`;
+  return namespaceOutput;
 }
 function generateEnumType(enumType, options) {
   const { jsDocComments = false, jsonTypeMapping = false } = options;
@@ -539,7 +812,8 @@ function generateModelType(model, options) {
   const {
     typeMappings,
     jsDocComments = false,
-    jsonTypeMapping = false
+    jsonTypeMapping = false,
+    dataModel
   } = options;
   const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping);
   let output = "";
@@ -595,25 +869,14 @@ function generateModelType(model, options) {
 `;
   }
   output += "}\n\n";
-  if (omitFields.length > 0) {
-    const omitUnion = omitFields.map((f) => `"${f}"`).join(" | ");
-    const typeName = customTypeName || generateOmitTypeName(omitFields);
-    output += `/**
- * Utility types for ${model.name}
- */
-`;
-    output += `export namespace ${model.name} {
-`;
-    output += `  /**
-   * ${model.name} without ${omitFields.join(", ")}
-   * Usage: type UserInput = ${model.name}.${typeName};
-   */
-`;
-    output += `  export type ${typeName} = Omit<${model.name}, ${omitUnion}>;
-`;
-    output += `}
-
-`;
+  const utilityTypes = generateUtilityTypes(
+    model,
+    dataModel,
+    omitDirective,
+    jsonTypeMapping
+  );
+  if (utilityTypes) {
+    output += utilityTypes;
   }
   return output;
 }
@@ -627,7 +890,11 @@ async function onGenerate(options) {
   }
   (0, import_node_fs.mkdirSync)(outputDir, { recursive: true });
   const dataModel = options.dmmf.datamodel;
-  const typeMappings = config.typeMappings || config.jsonTypeMapping ? parseTypeMappings(config.typeMappings, void 0, config.jsonTypeMapping) : void 0;
+  const typeMappings = config.typeMappings || config.jsonTypeMapping ? parseTypeMappings(
+    config.typeMappings,
+    void 0,
+    config.jsonTypeMapping
+  ) : void 0;
   if (config.jsonTypeMapping) {
     const prismaTypeContent = generatePrismaTypeNamespace();
     const prismaTypePath = (0, import_node_path.join)(outputDir, "prisma-json.d.ts");
@@ -696,7 +963,8 @@ async function onGenerate(options) {
         let modelContent = generateModelType(model, {
           typeMappings,
           jsDocComments: config.jsDocComments ?? false,
-          jsonTypeMapping: config.jsonTypeMapping ?? false
+          jsonTypeMapping: config.jsonTypeMapping ?? false,
+          dataModel
         });
         if (config.global) {
           modelContent += "declare global {\n";
