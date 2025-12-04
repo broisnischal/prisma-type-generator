@@ -66,7 +66,7 @@ var require_chunk_EOPVK4AE = __commonJS({
     });
     module2.exports = __toCommonJS(chunk_EOPVK4AE_exports);
     var import_stream = __toESM2(require("stream"));
-    var import_util2 = __toESM2(require("util"));
+    var import_util3 = __toESM2(require("util"));
     function byline(readStream, options) {
       return createStream(readStream, options);
     }
@@ -103,7 +103,7 @@ var require_chunk_EOPVK4AE = __commonJS({
         }
       });
     }
-    import_util2.default.inherits(LineStream, import_stream.default.Transform);
+    import_util3.default.inherits(LineStream, import_stream.default.Transform);
     LineStream.prototype._transform = function(chunk, encoding, done) {
       encoding = encoding || "utf8";
       if (Buffer.isBuffer(chunk)) {
@@ -154,6 +154,38 @@ var require_chunk_EOPVK4AE = __commonJS({
         return Buffer.from(line, chunkEncoding);
       }
     };
+  }
+});
+
+// node_modules/@prisma/generator-helper/dist/chunk-KEYE2GFS.js
+var require_chunk_KEYE2GFS = __commonJS({
+  "node_modules/@prisma/generator-helper/dist/chunk-KEYE2GFS.js"(exports2, module2) {
+    "use strict";
+    var __defProp2 = Object.defineProperty;
+    var __getOwnPropDesc2 = Object.getOwnPropertyDescriptor;
+    var __getOwnPropNames2 = Object.getOwnPropertyNames;
+    var __hasOwnProp2 = Object.prototype.hasOwnProperty;
+    var __export = (target, all) => {
+      for (var name in all)
+        __defProp2(target, name, { get: all[name], enumerable: true });
+    };
+    var __copyProps2 = (to, from, except, desc) => {
+      if (from && typeof from === "object" || typeof from === "function") {
+        for (let key of __getOwnPropNames2(from))
+          if (!__hasOwnProp2.call(to, key) && key !== except)
+            __defProp2(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc2(from, key)) || desc.enumerable });
+      }
+      return to;
+    };
+    var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
+    var chunk_KEYE2GFS_exports = {};
+    __export(chunk_KEYE2GFS_exports, {
+      isErrorResponse: () => isErrorResponse
+    });
+    module2.exports = __toCommonJS(chunk_KEYE2GFS_exports);
+    function isErrorResponse(response) {
+      return response.error !== void 0;
+    }
   }
 });
 
@@ -240,14 +272,14 @@ var require_dist = __commonJS({
       return to;
     };
     var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
-    var src_exports = {};
-    __export(src_exports, {
+    var index_exports = {};
+    __export(index_exports, {
       Debug: () => Debug,
       clearLogs: () => clearLogs,
-      default: () => src_default,
+      default: () => index_default,
       getLogs: () => getLogs
     });
-    module2.exports = __toCommonJS(src_exports);
+    module2.exports = __toCommonJS(index_exports);
     var colors_exports = {};
     __export(colors_exports, {
       $: () => $,
@@ -445,19 +477,17 @@ var require_dist = __commonJS({
     function clearLogs() {
       argsHistory.length = 0;
     }
-    var src_default = Debug;
+    var index_default = Debug;
   }
 });
 
-// node_modules/@prisma/generator-helper/dist/chunk-YCVAQFCS.js
-var require_chunk_YCVAQFCS = __commonJS({
-  "node_modules/@prisma/generator-helper/dist/chunk-YCVAQFCS.js"(exports2, module2) {
+// node_modules/@prisma/generator-helper/dist/chunk-MXZE5TCU.js
+var require_chunk_MXZE5TCU = __commonJS({
+  "node_modules/@prisma/generator-helper/dist/chunk-MXZE5TCU.js"(exports2, module2) {
     "use strict";
-    var __create2 = Object.create;
     var __defProp2 = Object.defineProperty;
     var __getOwnPropDesc2 = Object.getOwnPropertyDescriptor;
     var __getOwnPropNames2 = Object.getOwnPropertyNames;
-    var __getProtoOf2 = Object.getPrototypeOf;
     var __hasOwnProp2 = Object.prototype.hasOwnProperty;
     var __export = (target, all) => {
       for (var name in all)
@@ -471,25 +501,18 @@ var require_chunk_YCVAQFCS = __commonJS({
       }
       return to;
     };
-    var __toESM2 = (mod, isNodeMode, target) => (target = mod != null ? __create2(__getProtoOf2(mod)) : {}, __copyProps2(
-      // If the importer is in node compatibility mode or this is not an ESM
-      // file that has been converted to a CommonJS file using a Babel-
-      // compatible transform (i.e. "__esModule" has not been set), then set
-      // "default" to the CommonJS "module.exports" for node compatibility.
-      isNodeMode || !mod || !mod.__esModule ? __defProp2(target, "default", { value: mod, enumerable: true }) : target,
-      mod
-    ));
     var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
-    var chunk_YCVAQFCS_exports = {};
-    __export(chunk_YCVAQFCS_exports, {
+    var chunk_MXZE5TCU_exports = {};
+    __export(chunk_MXZE5TCU_exports, {
       GeneratorError: () => GeneratorError,
       GeneratorProcess: () => GeneratorProcess
     });
-    module2.exports = __toCommonJS(chunk_YCVAQFCS_exports);
+    module2.exports = __toCommonJS(chunk_MXZE5TCU_exports);
     var import_chunk_EOPVK4AE = require_chunk_EOPVK4AE();
+    var import_chunk_KEYE2GFS = require_chunk_KEYE2GFS();
     var import_chunk_QGM4M3NI = require_chunk_QGM4M3NI();
-    var import_debug = __toESM2(require_dist());
-    var import_child_process = require("child_process");
+    var import_node_child_process = require("node:child_process");
+    var import_debug = require_dist();
     var require_windows = (0, import_chunk_QGM4M3NI.__commonJS)({
       "../../node_modules/.pnpm/isexe@2.0.0/node_modules/isexe/windows.js"(exports3, module22) {
         "use strict";
@@ -1012,32 +1035,31 @@ var require_chunk_YCVAQFCS = __commonJS({
     var bgMagenta = init(45, 49);
     var bgCyan = init(46, 49);
     var bgWhite = init(47, 49);
-    var debug = (0, import_debug.default)("prisma:GeneratorProcess");
+    var debug = (0, import_debug.Debug)("prisma:GeneratorProcess");
     var globalMessageId = 1;
     var GeneratorError = class extends Error {
       constructor(message, code, data) {
         super(message);
         this.code = code;
         this.data = data;
-        this.name = "GeneratorError";
         if (data?.stack) {
           this.stack = data.stack;
         }
       }
+      name = "GeneratorError";
     };
     var GeneratorProcess = class {
       constructor(pathOrCommand, { isNode = false } = {}) {
         this.pathOrCommand = pathOrCommand;
-        this.handlers = {};
-        this.errorLogs = "";
-        this.exited = false;
-        this.getManifest = this.rpcMethod(
-          "getManifest",
-          (result) => result.manifest ?? null
-        );
-        this.generate = this.rpcMethod("generate");
         this.isNode = isNode;
       }
+      child;
+      handlers = {};
+      initPromise;
+      isNode;
+      errorLogs = "";
+      pendingError;
+      exited = false;
       async init() {
         if (!this.initPromise) {
           this.initPromise = this.initSingleton();
@@ -1047,7 +1069,7 @@ var require_chunk_YCVAQFCS = __commonJS({
       initSingleton() {
         return new Promise((resolve, reject) => {
           if (this.isNode) {
-            this.child = (0, import_child_process.fork)(this.pathOrCommand, [], {
+            this.child = (0, import_node_child_process.fork)(this.pathOrCommand, [], {
               stdio: ["pipe", "inherit", "pipe", "ipc"],
               env: {
                 ...process.env,
@@ -1125,7 +1147,7 @@ ${this.errorLogs}`
             throw new Error(`message.id has to be a number. Found value ${data.id}`);
           }
           if (this.handlers[data.id]) {
-            if (isErrorResponse(data)) {
+            if ((0, import_chunk_KEYE2GFS.isErrorResponse)(data)) {
               const error = new GeneratorError(data.error.message, data.error.code, data.error.data);
               this.handlers[data.id].reject(error);
             } else {
@@ -1209,16 +1231,18 @@ ${this.errorLogs}`
           );
         });
       }
+      getManifest = this.rpcMethod(
+        "getManifest",
+        (result) => result.manifest ?? null
+      );
+      generate = this.rpcMethod("generate");
     };
-    function isErrorResponse(response) {
-      return response.error !== void 0;
-    }
   }
 });
 
-// node_modules/@prisma/generator-helper/dist/chunk-JU65QD3H.js
-var require_chunk_JU65QD3H = __commonJS({
-  "node_modules/@prisma/generator-helper/dist/chunk-JU65QD3H.js"(exports2, module2) {
+// node_modules/@prisma/generator-helper/dist/chunk-IH6S2YZX.js
+var require_chunk_IH6S2YZX = __commonJS({
+  "node_modules/@prisma/generator-helper/dist/chunk-IH6S2YZX.js"(exports2, module2) {
     "use strict";
     var __defProp2 = Object.defineProperty;
     var __getOwnPropDesc2 = Object.getOwnPropertyDescriptor;
@@ -1237,72 +1261,11 @@ var require_chunk_JU65QD3H = __commonJS({
       return to;
     };
     var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
-    var chunk_JU65QD3H_exports = {};
-    __export(chunk_JU65QD3H_exports, {
-      DMMF: () => DMMF,
-      datamodelEnumToSchemaEnum: () => datamodelEnumToSchemaEnum
-    });
-    module2.exports = __toCommonJS(chunk_JU65QD3H_exports);
-    function datamodelEnumToSchemaEnum(datamodelEnum) {
-      return {
-        name: datamodelEnum.name,
-        values: datamodelEnum.values.map((v) => v.name)
-      };
-    }
-    var DMMF;
-    ((DMMF2) => {
-      let ModelAction;
-      ((ModelAction2) => {
-        ModelAction2["findUnique"] = "findUnique";
-        ModelAction2["findUniqueOrThrow"] = "findUniqueOrThrow";
-        ModelAction2["findFirst"] = "findFirst";
-        ModelAction2["findFirstOrThrow"] = "findFirstOrThrow";
-        ModelAction2["findMany"] = "findMany";
-        ModelAction2["create"] = "create";
-        ModelAction2["createMany"] = "createMany";
-        ModelAction2["createManyAndReturn"] = "createManyAndReturn";
-        ModelAction2["update"] = "update";
-        ModelAction2["updateMany"] = "updateMany";
-        ModelAction2["updateManyAndReturn"] = "updateManyAndReturn";
-        ModelAction2["upsert"] = "upsert";
-        ModelAction2["delete"] = "delete";
-        ModelAction2["deleteMany"] = "deleteMany";
-        ModelAction2["groupBy"] = "groupBy";
-        ModelAction2["count"] = "count";
-        ModelAction2["aggregate"] = "aggregate";
-        ModelAction2["findRaw"] = "findRaw";
-        ModelAction2["aggregateRaw"] = "aggregateRaw";
-      })(ModelAction = DMMF2.ModelAction || (DMMF2.ModelAction = {}));
-    })(DMMF || (DMMF = {}));
-  }
-});
-
-// node_modules/@prisma/generator-helper/dist/chunk-NAG6CCUN.js
-var require_chunk_NAG6CCUN = __commonJS({
-  "node_modules/@prisma/generator-helper/dist/chunk-NAG6CCUN.js"(exports2, module2) {
-    "use strict";
-    var __defProp2 = Object.defineProperty;
-    var __getOwnPropDesc2 = Object.getOwnPropertyDescriptor;
-    var __getOwnPropNames2 = Object.getOwnPropertyNames;
-    var __hasOwnProp2 = Object.prototype.hasOwnProperty;
-    var __export = (target, all) => {
-      for (var name in all)
-        __defProp2(target, name, { get: all[name], enumerable: true });
-    };
-    var __copyProps2 = (to, from, except, desc) => {
-      if (from && typeof from === "object" || typeof from === "function") {
-        for (let key of __getOwnPropNames2(from))
-          if (!__hasOwnProp2.call(to, key) && key !== except)
-            __defProp2(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc2(from, key)) || desc.enumerable });
-      }
-      return to;
-    };
-    var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
-    var chunk_NAG6CCUN_exports = {};
-    __export(chunk_NAG6CCUN_exports, {
+    var chunk_IH6S2YZX_exports = {};
+    __export(chunk_IH6S2YZX_exports, {
       generatorHandler: () => generatorHandler2
     });
-    module2.exports = __toCommonJS(chunk_NAG6CCUN_exports);
+    module2.exports = __toCommonJS(chunk_IH6S2YZX_exports);
     var import_chunk_EOPVK4AE = require_chunk_EOPVK4AE();
     function generatorHandler2(handler) {
       (0, import_chunk_EOPVK4AE.byline)(process.stdin).on("data", async (line) => {
@@ -1333,7 +1296,7 @@ var require_chunk_NAG6CCUN = __commonJS({
         if (json.method === "getManifest") {
           if (handler.onManifest) {
             try {
-              const manifest = handler.onManifest(json.params);
+              const manifest = await handler.onManifest(json.params);
               respond({
                 jsonrpc: "2.0",
                 result: {
@@ -1369,15 +1332,8 @@ var require_chunk_NAG6CCUN = __commonJS({
       process.stdin.resume();
     }
     function respond(response) {
-      console.error(JSON.stringify(response));
+      process.stderr.write(JSON.stringify(response) + "\n");
     }
-  }
-});
-
-// node_modules/@prisma/generator-helper/dist/chunk-6F4PWJZI.js
-var require_chunk_6F4PWJZI = __commonJS({
-  "node_modules/@prisma/generator-helper/dist/chunk-6F4PWJZI.js"() {
-    "use strict";
   }
 });
 
@@ -1402,21 +1358,18 @@ var require_dist2 = __commonJS({
       return to;
     };
     var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
-    var dist_exports = {};
-    __export(dist_exports, {
-      DMMF: () => import_chunk_JU65QD3H.DMMF,
-      GeneratorError: () => import_chunk_YCVAQFCS.GeneratorError,
-      GeneratorProcess: () => import_chunk_YCVAQFCS.GeneratorProcess,
-      datamodelEnumToSchemaEnum: () => import_chunk_JU65QD3H.datamodelEnumToSchemaEnum,
-      generatorHandler: () => import_chunk_NAG6CCUN.generatorHandler
+    var index_exports = {};
+    __export(index_exports, {
+      GeneratorError: () => import_chunk_MXZE5TCU.GeneratorError,
+      GeneratorProcess: () => import_chunk_MXZE5TCU.GeneratorProcess,
+      generatorHandler: () => import_chunk_IH6S2YZX.generatorHandler
     });
-    module2.exports = __toCommonJS(dist_exports);
-    var import_chunk_YCVAQFCS = require_chunk_YCVAQFCS();
-    var import_chunk_JU65QD3H = require_chunk_JU65QD3H();
-    var import_chunk_NAG6CCUN = require_chunk_NAG6CCUN();
+    module2.exports = __toCommonJS(index_exports);
+    var import_chunk_MXZE5TCU = require_chunk_MXZE5TCU();
+    var import_chunk_IH6S2YZX = require_chunk_IH6S2YZX();
     var import_chunk_EOPVK4AE = require_chunk_EOPVK4AE();
+    var import_chunk_KEYE2GFS = require_chunk_KEYE2GFS();
     var import_chunk_QGM4M3NI = require_chunk_QGM4M3NI();
-    var import_chunk_6F4PWJZI = require_chunk_6F4PWJZI();
   }
 });
 
@@ -1426,101 +1379,518 @@ var import_generator_helper = __toESM(require_dist2());
 // src/on-manifest.ts
 function onManifest() {
   return {
-    defaultOutput: "../types",
+    defaultOutput: "../generated/types",
     prettyName: "Prisma Type Generator"
   };
 }
 
 // src/on-generate.ts
 var import_node_fs = require("node:fs");
-
-// src/util.ts
-function getTypeScriptType(type) {
-  switch (type) {
-    case "Decimal":
-    case "Int":
-    case "Float":
-    case "BigInt":
-      return "number";
-    case "DateTime":
-      return "Date";
-    case "Boolean":
-      return "boolean";
-    case "Json":
-      return "Record<string, unknown>";
-    case "String":
-      return "string";
-    default:
-      return type;
-  }
-}
+var import_node_path = require("node:path");
 
 // src/config.ts
 function parseConfig(config) {
+  const splitFiles = parseBoolean(config.splitFiles, false);
+  const splitBySchema = parseBoolean(config.splitBySchema, false);
+  if (splitFiles && splitBySchema) {
+    throw new Error(
+      "Cannot use 'splitFiles' and 'splitBySchema' together. These options are mutually exclusive. Please use only one of them."
+    );
+  }
   return {
-    global: config.global ? String(config.global).toLowerCase().trim() === "true" : true,
-    clear: config.clear ? String(config.clear).toLowerCase().trim() === "true" : true,
-    enumOnly: config.enumOnly ? String(config.enumOnly).toLowerCase().trim() === "true" : false
+    global: parseBoolean(config.global, false),
+    clear: parseBoolean(config.clear, false),
+    enumOnly: parseBoolean(config.enumOnly, false),
+    include: config.include ? String(config.include).trim() : void 0,
+    exclude: config.exclude ? String(config.exclude).trim() : void 0,
+    typeMappings: config.typeMappings ? String(config.typeMappings).trim() : void 0,
+    jsonTypeMapping: parseBoolean(config.jsonTypeMapping, false),
+    jsDocComments: parseBoolean(config.jsDocComments, false),
+    splitFiles,
+    barrelExports: parseBoolean(config.barrelExports, true),
+    splitBySchema
   };
 }
+function parseBoolean(value, defaultValue) {
+  if (!value) return defaultValue;
+  return String(value).toLowerCase().trim() === "true";
+}
 
-// src/on-generate.ts
-async function onGenerate(options) {
-  const config = parseConfig(options.generator.config);
-  const global2 = config.global ?? false;
-  const clear = config.clear ?? false;
-  const enumOnly = config.enumOnly ?? false;
-  let exportedTypes = "";
-  const dataModel = options.dmmf.datamodel;
-  if (enumOnly) {
-    for (const enumType of dataModel.enums) {
-      exportedTypes += `export const ${enumType.name} = {`;
+// src/util.ts
+function parseTypeMappings(mappings, defaultMappings, jsonTypeMapping) {
+  const result = {
+    Decimal: "number",
+    Int: "number",
+    Float: "number",
+    BigInt: "number",
+    DateTime: "Date",
+    Boolean: "boolean",
+    String: "string",
+    Bytes: "Buffer",
+    ...defaultMappings
+  };
+  if (jsonTypeMapping) {
+    result.Json = "PrismaType.Json";
+  } else {
+    result.Json = "Record<string, unknown>";
+  }
+  if (!mappings) return result;
+  const pairs = mappings.split(",");
+  for (const pair of pairs) {
+    const [key, value] = pair.split("=").map((s) => s.trim());
+    if (key && value) {
+      if (key === "Json" && jsonTypeMapping) {
+        continue;
+      }
+      result[key] = value;
     }
   }
-  for (const model of dataModel.models) {
-    exportedTypes += `export interface ${model.name} {
+  return result;
+}
+function getTypeScriptType(type, typeMappings) {
+  const mappings = typeMappings || parseTypeMappings();
+  return mappings[type] || type;
+}
+function extractJSDoc(comment) {
+  if (!comment) return "";
+  return comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+}
+function parseTypeMappingFromComment(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@type\s+\S+\s*=\s*(.+)/);
+  if (match && match[1]) {
+    const typeName = match[1].trim();
+    return typeName.replace(/\s*\/\/.*$/, "").trim();
+  }
+  const simpleMatch = cleanComment.match(/@type\s+(\S+)=(\S+)/);
+  return simpleMatch ? simpleMatch[2] : null;
+}
+function shouldIncludeModel(modelName, include, exclude) {
+  if (exclude) {
+    const excludeList = exclude.split(",").map((s) => s.trim());
+    if (excludeList.includes(modelName)) {
+      return false;
+    }
+  }
+  if (include) {
+    const includeList = include.split(",").map((s) => s.trim());
+    return includeList.includes(modelName);
+  }
+  return true;
+}
+function modelToFileName(modelName) {
+  return modelName.charAt(0).toLowerCase() + modelName.slice(1);
+}
+function getSchemaFileNameForModel(modelName, schemaFiles) {
+  const baseNames = [];
+  if (schemaFiles && schemaFiles.length > 0) {
+    schemaFiles.map((file) => file.replace(/\.prisma$/, "").toLowerCase()).filter((name) => name !== "schema").forEach((name) => baseNames.push(name));
+  }
+  for (const baseName of baseNames) {
+    const prefix = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+    if (modelName.startsWith(prefix)) {
+      return baseName;
+    }
+  }
+  const match = modelName.match(/^([A-Z][a-z]+)/);
+  if (match) {
+    const prefix = match[1].toLowerCase();
+    if (baseNames.length > 0 && baseNames.includes(prefix)) {
+      return prefix;
+    }
+    if (["post", "user", "test"].includes(prefix)) {
+      return prefix;
+    }
+  }
+  return "index";
+}
+function groupModelsBySchemaFile(models, schemaFiles) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const model of models) {
+    const fileName = getSchemaFileNameForModel(model.name, schemaFiles);
+    if (!groups.has(fileName)) {
+      groups.set(fileName, []);
+    }
+    groups.get(fileName).push(model);
+  }
+  return groups;
+}
+function groupEnumsBySchemaFile(enums, schemaFiles) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const enumType of enums) {
+    const fileName = getSchemaFileNameForModel(enumType.name, schemaFiles);
+    if (!groups.has(fileName)) {
+      groups.set(fileName, []);
+    }
+    groups.get(fileName).push(enumType);
+  }
+  return groups;
+}
+function generatePrismaTypeNamespace() {
+  return `/**
+ * PrismaType namespace for custom type mappings
+ * This namespace is used when jsonTypeMapping is enabled
+ */
+export namespace PrismaType {
+  /**
+   * JSON type interface
+   * Extend this interface to customize the JSON type used throughout your application
+   * 
+   * @example
+   * // In your project, create a file that extends this:
+   * declare namespace PrismaType {
+   *   interface Json {
+   *     [key: string]: any;
+   *   }
+   * }
+   */
+  export interface Json {
+    [key: string]: unknown;
+  }
+}
+`;
+}
+
+// src/generators/types.ts
+function generateTypes(options) {
+  const {
+    dataModel,
+    typeMappings,
+    jsDocComments = false,
+    include,
+    exclude,
+    models,
+    enums,
+    jsonTypeMapping = false
+  } = options;
+  const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping);
+  let output = "";
+  if (jsonTypeMapping) {
+    output += `import { PrismaType } from "./prisma-type";
+
+`;
+  }
+  const modelsToGenerate = models || dataModel.models;
+  const enumsToGenerate = enums || dataModel.enums;
+  for (const enumType of enumsToGenerate) {
+    const comment = jsDocComments ? extractJSDoc(enumType.documentation) : "";
+    const jsDoc = comment ? `/**
+ * ${comment}
+ */
+` : "";
+    output += `${jsDoc}export type ${enumType.name} = ${enumType.values.map((v) => `"${v.name}"`).join(" | ")};
+
+`;
+    output += `export declare const ${enumType.name}: {
+`;
+    for (const enumValue of enumType.values) {
+      output += `  readonly ${enumValue.name}: "${enumValue.name}";
+`;
+    }
+    output += "};\n\n";
+  }
+  for (const model of modelsToGenerate) {
+    if (include && !include.split(",").map((s) => s.trim()).includes(model.name)) {
+      continue;
+    }
+    if (exclude && exclude.split(",").map((s) => s.trim()).includes(model.name)) {
+      continue;
+    }
+    const comment = jsDocComments ? extractJSDoc(model.documentation) : "";
+    const jsDoc = comment ? `/**
+ * ${comment}
+ */
+` : "";
+    output += `${jsDoc}export interface ${model.name} {
 `;
     const scalarAndEnumFields = model.fields.filter(
       (field) => ["scalar", "enum"].includes(field.kind)
     );
     for (const field of scalarAndEnumFields) {
-      const typeScriptType = getTypeScriptType(field.type);
+      const customType = parseTypeMappingFromComment(field.documentation);
+      const fieldComment = jsDocComments ? extractJSDoc(field.documentation) : "";
+      let typeScriptType;
+      if (customType) {
+        typeScriptType = customType;
+      } else {
+        typeScriptType = getTypeScriptType(field.type, mappings);
+      }
       const nullability = field.isRequired ? "" : "| null";
       const list = field.isList ? "[]" : "";
-      exportedTypes += `  ${field.name}: ${typeScriptType}${nullability}${list};
+      const fieldJsDoc = fieldComment ? `  /**
+   * ${fieldComment}
+   */
+` : "";
+      output += `${fieldJsDoc}  ${field.name}: ${typeScriptType}${nullability}${list};
 `;
     }
-    exportedTypes += "}\n\n";
+    output += "}\n\n";
   }
-  for (const enumType of dataModel.enums) {
-    exportedTypes += `export type ${enumType.name} = ${enumType.values.map((v) => `"${v.name}"`).join(" | ")};
+  return output;
+}
+function generateEnumType(enumType, options) {
+  const { jsDocComments = false, jsonTypeMapping = false } = options;
+  let output = "";
+  if (jsonTypeMapping) {
+    output += `import { PrismaType } from "./prisma-type";
 
 `;
-    exportedTypes += `export declare const ${enumType.name}: {
-`;
-    for (const enumValue of enumType.values) {
-      exportedTypes += `  readonly ${enumValue.name}: "${enumValue.name}";
-`;
-    }
-    exportedTypes += "};\n\n";
   }
-  if (global2) {
-    exportedTypes += "declare global {\n";
-    for (const model of dataModel.models) {
-      exportedTypes += `  export type T${model.name} = ${model.name};
+  const comment = jsDocComments ? extractJSDoc(enumType.documentation) : "";
+  const jsDoc = comment ? `/**
+ * ${comment}
+ */
+` : "";
+  output += `${jsDoc}export type ${enumType.name} = ${enumType.values.map((v) => `"${v.name}"`).join(" | ")};
+
 `;
+  output += `export declare const ${enumType.name}: {
+`;
+  for (const enumValue of enumType.values) {
+    output += `  readonly ${enumValue.name}: "${enumValue.name}";
+`;
+  }
+  output += "};\n\n";
+  return output;
+}
+function generateModelType(model, options) {
+  const {
+    typeMappings,
+    jsDocComments = false,
+    jsonTypeMapping = false
+  } = options;
+  const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping);
+  let output = "";
+  if (jsonTypeMapping) {
+    output += `import { PrismaType } from "./prisma-type";
+
+`;
+  }
+  const comment = jsDocComments ? extractJSDoc(model.documentation) : "";
+  const jsDoc = comment ? `/**
+ * ${comment}
+ */
+` : "";
+  output += `${jsDoc}export interface ${model.name} {
+`;
+  const scalarAndEnumFields = model.fields.filter(
+    (field) => ["scalar", "enum"].includes(field.kind)
+  );
+  for (const field of scalarAndEnumFields) {
+    const customType = parseTypeMappingFromComment(field.documentation);
+    const fieldComment = jsDocComments ? extractJSDoc(field.documentation) : "";
+    let typeScriptType;
+    if (customType) {
+      typeScriptType = customType;
+    } else {
+      typeScriptType = getTypeScriptType(field.type, mappings);
+    }
+    const nullability = field.isRequired ? "" : "| null";
+    const list = field.isList ? "[]" : "";
+    const fieldJsDoc = fieldComment ? `  /**
+   * ${fieldComment}
+   */
+` : "";
+    output += `${fieldJsDoc}  ${field.name}: ${typeScriptType}${nullability}${list};
+`;
+  }
+  output += "}\n\n";
+  return output;
+}
+
+// src/on-generate.ts
+async function onGenerate(options) {
+  const config = parseConfig(options.generator.config);
+  const outputDir = options.generator.output?.value ?? "../generated/types";
+  if (config.clear && (0, import_node_fs.existsSync)(outputDir)) {
+    (0, import_node_fs.rmSync)(outputDir, { recursive: true, force: true });
+  }
+  (0, import_node_fs.mkdirSync)(outputDir, { recursive: true });
+  const dataModel = options.dmmf.datamodel;
+  const typeMappings = config.typeMappings || config.jsonTypeMapping ? parseTypeMappings(config.typeMappings, void 0, config.jsonTypeMapping) : void 0;
+  if (config.jsonTypeMapping) {
+    const prismaTypeContent = generatePrismaTypeNamespace();
+    const prismaTypePath = (0, import_node_path.join)(outputDir, "prisma-type.ts");
+    (0, import_node_fs.writeFileSync)(prismaTypePath, prismaTypeContent);
+  }
+  const filteredModels = dataModel.models.filter(
+    (model) => shouldIncludeModel(model.name, config.include, config.exclude)
+  );
+  const schemaPath = options.schemaPath || "";
+  const schemaFiles = [];
+  const files = [];
+  if (config.splitBySchema) {
+    const modelGroups = config.enumOnly ? /* @__PURE__ */ new Map() : groupModelsBySchemaFile(filteredModels, schemaFiles);
+    const enumGroups = groupEnumsBySchemaFile(dataModel.enums, schemaFiles);
+    const allFileNames = /* @__PURE__ */ new Set();
+    if (!config.enumOnly) {
+      modelGroups.forEach((_, fileName) => allFileNames.add(fileName));
+    }
+    enumGroups.forEach((_, fileName) => allFileNames.add(fileName));
+    for (const fileName of allFileNames) {
+      const fileModels = config.enumOnly ? [] : modelGroups.get(fileName) || [];
+      const fileEnums = enumGroups.get(fileName) || [];
+      const typesContent = generateTypes({
+        dataModel,
+        typeMappings,
+        jsDocComments: config.jsDocComments ?? false,
+        models: fileModels,
+        enums: fileEnums,
+        jsonTypeMapping: config.jsonTypeMapping ?? false
+      });
+      let finalContent = typesContent;
+      if (config.global) {
+        finalContent += "declare global {\n";
+        for (const model of fileModels) {
+          finalContent += `  export type T${model.name} = ${model.name};
+`;
+        }
+        for (const enumType of fileEnums) {
+          finalContent += `  export type T${enumType.name} = ${enumType.name};
+`;
+        }
+        finalContent += "}\n\n";
+      }
+      files.push({
+        name: fileName === "index" ? "index" : fileName,
+        content: finalContent
+      });
+    }
+    for (const file of files) {
+      const filePath = (0, import_node_path.join)(outputDir, `${file.name}.ts`);
+      (0, import_node_fs.writeFileSync)(filePath, file.content);
+    }
+    if (config.barrelExports && !config.global) {
+      const exports2 = [];
+      if (config.jsonTypeMapping) {
+        exports2.push(`export * from "./prisma-type";`);
+      }
+      for (const fileName of Array.from(allFileNames).sort()) {
+        exports2.push(`export * from "./${fileName}";`);
+      }
+      const indexContent = exports2.join("\n") + "\n";
+      (0, import_node_fs.writeFileSync)((0, import_node_path.join)(outputDir, "index.ts"), indexContent);
+    }
+    return;
+  }
+  if (config.splitFiles) {
+    if (!config.enumOnly) {
+      for (const model of filteredModels) {
+        let modelContent = generateModelType(model, {
+          typeMappings,
+          jsDocComments: config.jsDocComments ?? false,
+          jsonTypeMapping: config.jsonTypeMapping ?? false
+        });
+        if (config.global) {
+          modelContent += "declare global {\n";
+          modelContent += `  export type T${model.name} = ${model.name};
+`;
+          modelContent += "}\n\n";
+        }
+        files.push({
+          name: modelToFileName(model.name),
+          content: modelContent
+        });
+      }
     }
     for (const enumType of dataModel.enums) {
-      exportedTypes += `  export type T${enumType.name} = ${enumType.name};
+      let enumContent = generateEnumType(enumType, {
+        jsDocComments: config.jsDocComments ?? false,
+        jsonTypeMapping: config.jsonTypeMapping ?? false
+      });
+      if (config.global) {
+        enumContent += "declare global {\n";
+        enumContent += `  export type T${enumType.name} = ${enumType.name};
 `;
+        enumContent += "}\n\n";
+      }
+      files.push({
+        name: modelToFileName(enumType.name),
+        content: enumContent
+      });
     }
-    exportedTypes += "}\n\n";
+  } else {
+    if (!config.enumOnly) {
+      const typesContent = generateTypes({
+        dataModel: {
+          ...dataModel,
+          models: filteredModels
+        },
+        typeMappings,
+        jsDocComments: config.jsDocComments ?? false,
+        include: config.include,
+        exclude: config.exclude,
+        jsonTypeMapping: config.jsonTypeMapping ?? false
+      });
+      let finalTypesContent = typesContent;
+      if (config.global) {
+        finalTypesContent += "declare global {\n";
+        for (const model of filteredModels) {
+          finalTypesContent += `  export type T${model.name} = ${model.name};
+`;
+        }
+        for (const enumType of dataModel.enums) {
+          finalTypesContent += `  export type T${enumType.name} = ${enumType.name};
+`;
+        }
+        finalTypesContent += "}\n\n";
+      }
+      files.push({
+        name: "prisma.d.ts",
+        content: finalTypesContent
+      });
+    } else {
+      const enumContent = generateTypes({
+        dataModel: {
+          ...dataModel,
+          models: []
+        },
+        typeMappings,
+        jsDocComments: config.jsDocComments ?? false,
+        include: config.include,
+        exclude: config.exclude,
+        jsonTypeMapping: config.jsonTypeMapping ?? false
+      });
+      if (config.global) {
+        let globalContent = enumContent;
+        globalContent += "declare global {\n";
+        for (const enumType of dataModel.enums) {
+          globalContent += `  export type T${enumType.name} = ${enumType.name};
+`;
+        }
+        globalContent += "}\n\n";
+        files.push({
+          name: "prisma.d.ts",
+          content: globalContent
+        });
+      } else {
+        files.push({
+          name: "prisma.d.ts",
+          content: enumContent
+        });
+      }
+    }
   }
-  const outputDir = options.generator.output?.value ?? "./types";
-  const fullLocaltion = `${outputDir}/prisma.d.ts`;
-  (0, import_node_fs.mkdirSync)(outputDir, { recursive: true });
-  const formattedCode = exportedTypes;
-  (0, import_node_fs.writeFileSync)(fullLocaltion, formattedCode);
+  for (const file of files) {
+    const fileName = file.name.endsWith(".ts") || file.name.endsWith(".d.ts") ? file.name : `${file.name}.ts`;
+    const filePath = (0, import_node_path.join)(outputDir, fileName);
+    (0, import_node_fs.writeFileSync)(filePath, file.content);
+  }
+  if (config.barrelExports && !config.global && (files.length > 1 || config.jsonTypeMapping)) {
+    const exports2 = [];
+    if (config.jsonTypeMapping) {
+      exports2.push(`export * from "./prisma-type";`);
+    }
+    if (files.length > 0) {
+      const fileExports = files.map((f) => {
+        const baseName = f.name.replace(".ts", "").replace(".d.ts", "");
+        return `export * from "./${baseName}";`;
+      }).join("\n");
+      exports2.push(fileExports);
+    }
+    (0, import_node_fs.writeFileSync)((0, import_node_path.join)(outputDir, "index.ts"), exports2.join("\n") + "\n");
+  }
 }
 
 // src/generator.ts

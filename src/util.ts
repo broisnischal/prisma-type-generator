@@ -1,19 +1,340 @@
-export function getTypeScriptType(type: string) {
-  switch (type) {
-    case "Decimal":
-    case "Int":
-    case "Float":
-    case "BigInt":
-      return "number";
-    case "DateTime":
-      return "Date";
-    case "Boolean":
-      return "boolean";
-    case "Json":
-      return "Record<string, unknown>";
-    case "String":
-      return "string";
-    default:
-      return type;
+export interface TypeMapping {
+  [prismaType: string]: string;
+}
+
+export function parseTypeMappings(
+  mappings?: string,
+  defaultMappings?: TypeMapping,
+  jsonTypeMapping?: boolean
+): TypeMapping {
+  const result: TypeMapping = {
+    Decimal: "number",
+    Int: "number",
+    Float: "number",
+    BigInt: "number",
+    DateTime: "Date",
+    Boolean: "boolean",
+    String: "string",
+    Bytes: "Buffer",
+    ...defaultMappings,
+  };
+
+  // Handle Json type based on jsonTypeMapping option
+  if (jsonTypeMapping) {
+    result.Json = "PrismaType.Json";
+  } else {
+    result.Json = "Record<string, unknown>";
   }
+
+  if (!mappings) return result;
+
+  // Parse format: "DateTime=string,Bytes=Uint8Array"
+  // Note: Json type should not be in typeMappings when jsonTypeMapping is enabled
+  const pairs = mappings.split(",");
+  for (const pair of pairs) {
+    const [key, value] = pair.split("=").map((s) => s.trim());
+    if (key && value) {
+      // Skip Json if jsonTypeMapping is enabled (it's handled separately)
+      if (key === "Json" && jsonTypeMapping) {
+        continue;
+      }
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+export function getTypeScriptType(
+  type: string,
+  typeMappings?: TypeMapping
+): string {
+  const mappings = typeMappings || parseTypeMappings();
+  return mappings[type] || type;
+}
+
+/**
+ * Extract JSDoc comment from Prisma field/model documentation
+ */
+export function extractJSDoc(comment?: string | null): string {
+  if (!comment) return "";
+  // Remove Prisma comment markers (/// or //)
+  return comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+}
+
+/**
+ * Parse type mapping from Prisma comment
+ * Format: /// @type Json=UserPreferences
+ * Format: /// @type Json=Record<string, UserPreferences>
+ * Format: /// @type Json=any
+ * Format: /// @type Json=UserPreferences[]
+ * Format: /// @type Json=Array<UserPreferences>
+ * Supports any TypeScript type/interface name from your project
+ */
+export function parseTypeMappingFromComment(
+  comment?: string | null,
+  jsonTypeMapping?: boolean
+): string | null {
+  if (!comment) return null;
+
+  // Match @type PrismaType=TypeScriptType
+  // The TypeScript type can be:
+  // - Simple: UserPreferences
+  // - Generic: Record<string, UserPreferences>
+  // - Array: UserPreferences[]
+  // - Complex: Array<Record<string, UserPreferences>>
+  // - Union: UserPreferences | OtherType (though nullability is handled separately)
+  // - Special: Json=any or Json=SomeType (when jsonTypeMapping is enabled)
+
+  // Extract the comment text (remove /// markers)
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  // Match @type followed by Prisma type, =, and then the TypeScript type
+  // Match everything after = until end of line, preserving the type expression
+  const match = cleanComment.match(/@type\s+(\S+)\s*=\s*(.+)/);
+
+  if (match && match[1] && match[2]) {
+    const prismaType = match[1].trim();
+    let typeName = match[2].trim();
+
+    // Remove trailing comment markers if any
+    typeName = typeName.replace(/\s*\/\/.*$/, "").trim();
+
+    // Handle Json type specially when jsonTypeMapping is enabled
+    if (prismaType === "Json" && jsonTypeMapping) {
+      // If it's Json=any or just Json, use PrismaType.Json
+      if (typeName === "any" || typeName === "Json") {
+        return "PrismaType.Json";
+      }
+      // Otherwise, use the custom type (e.g., Json=UserPreferences -> UserPreferences)
+      // But wrap it in PrismaType.Json if it's a simple type name
+      // For complex types, return as-is
+      return typeName;
+    }
+
+    return typeName;
+  }
+
+  // Fallback to simple match for backwards compatibility
+  const simpleMatch = cleanComment.match(/@type\s+(\S+)=(\S+)/);
+  if (simpleMatch) {
+    const prismaType = simpleMatch[1];
+    const typeName = simpleMatch[2];
+    
+    // Handle Json type specially when jsonTypeMapping is enabled
+    if (prismaType === "Json" && jsonTypeMapping && (typeName === "any" || typeName === "Json")) {
+      return "PrismaType.Json";
+    }
+    
+    return typeName;
+  }
+  
+  return null;
+}
+
+/**
+ * Parse loose enum type from Prisma comment
+ * Format: /// @type !["email", "google"]  (strict literal union)
+ * Format: /// @type ["email", "google"]   (loose autocomplete)
+ * Returns: { strict: boolean, values: string[] } | null
+ */
+export function parseLooseEnumFromComment(
+  comment?: string | null
+): { strict: boolean; values: string[] } | null {
+  if (!comment) return null;
+
+  // Extract the comment text (remove /// markers)
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  // Match @type followed by optional ! and array of strings
+  // Format: @type !["value1", "value2"] (strict)
+  // Format: @type ["value1", "value2"] (loose)
+  const strictMatch = cleanComment.match(/@type\s+!\s*\[(.*?)\]/);
+  const looseMatch = cleanComment.match(/@type\s+\[(.*?)\]/);
+
+  if (strictMatch) {
+    // Strict mode: literal union type
+    const valuesStr = strictMatch[1];
+    const values = valuesStr
+      .split(",")
+      .map((v) => v.trim().replace(/^["']|["']$/g, ""))
+      .filter((v) => v.length > 0);
+    return { strict: true, values };
+  }
+
+  if (looseMatch) {
+    // Loose mode: autocomplete-friendly but allows other strings
+    const valuesStr = looseMatch[1];
+    const values = valuesStr
+      .split(",")
+      .map((v) => v.trim().replace(/^["']|["']$/g, ""))
+      .filter((v) => v.length > 0);
+    return { strict: false, values };
+  }
+
+  return null;
+}
+
+/**
+ * Check if model should be included based on include/exclude filters
+ */
+export function shouldIncludeModel(
+  modelName: string,
+  include?: string,
+  exclude?: string
+): boolean {
+  // If exclude is specified and model is in exclude list, exclude it
+  if (exclude) {
+    const excludeList = exclude.split(",").map((s) => s.trim());
+    if (excludeList.includes(modelName)) {
+      return false;
+    }
+  }
+
+  // If include is specified, only include models in the list
+  if (include) {
+    const includeList = include.split(",").map((s) => s.trim());
+    return includeList.includes(modelName);
+  }
+
+  // If neither is specified, include all
+  return true;
+}
+
+/**
+ * Convert model name to file name
+ */
+export function modelToFileName(modelName: string): string {
+  return modelName.charAt(0).toLowerCase() + modelName.slice(1);
+}
+
+/**
+ * Map model to schema file name based on naming convention
+ * Post* -> post.ts, User* -> user.ts, Test* -> test.ts
+ * Everything else -> index.ts (from schema.prisma)
+ */
+export function getSchemaFileNameForModel(
+  modelName: string,
+  schemaFiles?: string[]
+): string {
+  // Extract base names from schema files if provided (post.prisma -> post)
+  const baseNames: string[] = [];
+  if (schemaFiles && schemaFiles.length > 0) {
+    schemaFiles
+      .map((file) => file.replace(/\.prisma$/, "").toLowerCase())
+      .filter((name) => name !== "schema") // Exclude schema.prisma
+      .forEach((name) => baseNames.push(name));
+  }
+
+  // Try to match model name prefix to schema file
+  // Post* -> post, User* -> user, Test* -> test
+  for (const baseName of baseNames) {
+    const prefix = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+    if (modelName.startsWith(prefix)) {
+      return baseName;
+    }
+  }
+
+  // Fallback: use naming convention based on model name
+  // Extract the first capitalized word from model name
+  // Post -> post, User -> user, PostComment -> post, UserProfile -> user
+  const match = modelName.match(/^([A-Z][a-z]+)/);
+  if (match) {
+    const prefix = match[1].toLowerCase();
+    // If we have schema files and this prefix matches one, use it
+    if (baseNames.length > 0 && baseNames.includes(prefix)) {
+      return prefix;
+    }
+    // Otherwise use the prefix (for common cases like Post, User, Test)
+    if (["post", "user", "test"].includes(prefix)) {
+      return prefix;
+    }
+  }
+
+  // Default to index (from schema.prisma)
+  return "index";
+}
+
+/**
+ * Group models by schema file
+ */
+export function groupModelsBySchemaFile<T extends { name: string }>(
+  models: readonly T[],
+  schemaFiles?: string[]
+): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+
+  for (const model of models) {
+    const fileName = getSchemaFileNameForModel(model.name, schemaFiles);
+    if (!groups.has(fileName)) {
+      groups.set(fileName, []);
+    }
+    groups.get(fileName)!.push(model);
+  }
+
+  return groups;
+}
+
+/**
+ * Group enums by schema file (similar logic)
+ */
+export function groupEnumsBySchemaFile<T extends { name: string }>(
+  enums: readonly T[],
+  schemaFiles?: string[]
+): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+
+  for (const enumType of enums) {
+    const fileName = getSchemaFileNameForModel(enumType.name, schemaFiles);
+    if (!groups.has(fileName)) {
+      groups.set(fileName, []);
+    }
+    groups.get(fileName)!.push(enumType);
+  }
+
+  return groups;
+}
+
+/**
+ * Generate PrismaType namespace with Json interface
+ */
+export function generatePrismaTypeNamespace(): string {
+  return `/**
+ * PrismaType namespace for custom type mappings
+ * This namespace is used when jsonTypeMapping is enabled
+ */
+export namespace PrismaType {
+  /**
+   * JSON type interface
+   * Extend this interface to customize the JSON type used throughout your application
+   * 
+   * @example
+   * // In your project, create a file that extends this:
+   * declare namespace PrismaType {
+   *   interface Json {
+   *     [key: string]: any;
+   *   }
+   * }
+   * 
+   * // Or use inline types in Prisma schema:
+   * // /// @type Json=any
+   * // metadata Json
+   * 
+   * // /// @type Json=UserPreferences
+   * // preferences Json
+   */
+  export interface Json {
+    [key: string]: any;
+  }
+}
+`;
 }

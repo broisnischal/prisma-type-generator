@@ -1,7 +1,7 @@
 {
   "name": "prisma-type-generator",
-  "version": "1.14.0",
-  "description": "Prisma type generator",
+  "version": "2.0.0",
+  "description": "Prisma type generator with Zod schemas, DTOs, utility types, and more",
   "main": "dist/bin.js",
   "types": "./dist/bin.d.ts",
   "module": "./dist/bin.mjs",
@@ -12,7 +12,8 @@
     "default": "./dist/bin.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "generator-config.schema.json"
   ],
   "bin": {
     "prisma-type-generator": "dist/bin.js"
@@ -23,8 +24,8 @@
     "build:tsup": "tsup src/bin.ts --format cjs,esm --dts",
     "lint": "tsc",
     "build": "npm run clear && npm run build:cjs && npm run build:esm && npm run build:dts",
-    "build:cjs": "esbuild src/**/*.ts --bundle --outdir=dist --platform=node --format=cjs",
-    "build:esm": "esbuild src/**/*.ts --bundle --out-extension:.js=.mjs --outdir=dist --platform=node --format=esm",
+    "build:cjs": "esbuild src/bin.ts src/generator.ts src/on-generate.ts src/on-manifest.ts src/config.ts src/util.ts src/generators/*.ts --bundle --outdir=dist --platform=node --format=cjs --outbase=src",
+    "build:esm": "esbuild src/bin.ts src/generator.ts src/on-generate.ts src/on-manifest.ts src/config.ts src/util.ts src/generators/*.ts --bundle --out-extension:.js=.mjs --outdir=dist --platform=node --format=esm --outbase=src",
     "build:dts": "tsc --declaration --emitDeclarationOnly"
   },
   "peerDependencies": {
@@ -49,7 +50,12 @@
     "types",
     "interface",
     "monorepo",
-    "prisma.d.ts"
+    "prisma.d.ts",
+    "zod",
+    "dto",
+    "type-guards",
+    "utility-types",
+    "schema-generator"
   ],
   "author": {
     "name": "Nischal",

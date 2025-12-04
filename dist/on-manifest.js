@@ -25,7 +25,7 @@ __export(on_manifest_exports, {
 module.exports = __toCommonJS(on_manifest_exports);
 function onManifest() {
   return {
-    defaultOutput: "../types",
+    defaultOutput: "../generated/types",
     prettyName: "Prisma Type Generator"
   };
 }
