@@ -1,7 +1,7 @@
 {
   "name": "prisma-type-generator",
   "version": "2.0.0",
-  "description": "Prisma type generator with Zod schemas, DTOs, utility types, and more",
+  "description": "Prisma type generator for generating types from Prisma schema, with support for JSON type mapping and split by schema and many more.",
   "main": "dist/bin.js",
   "types": "./dist/bin.d.ts",
   "module": "./dist/bin.mjs",
@@ -29,7 +29,7 @@
     "build:dts": "tsc --declaration --emitDeclarationOnly"
   },
   "peerDependencies": {
-    "@prisma/client": ">=6.0.0 || >=7.0.0"
+    "@prisma/client": ">=5.0.0 || >=6.0.0 || >=7.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.6.0",
@@ -60,7 +60,7 @@
   "author": {
     "name": "Nischal",
     "url": "https://github.com/broisnischal/prisma-type-generator",
-    "email": "neeswebservice@gmail.com"
+    "email": "nischaldahal01395@gmail.com"
   },
   "license": "MIT",
   "homepage": "https://github.com/broisnischal/prisma-type-generator#readme"
