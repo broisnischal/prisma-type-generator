@@ -36,7 +36,7 @@ export async function onGenerate(options: GeneratorOptions) {
   // Generate PrismaType namespace file if jsonTypeMapping is enabled
   if (config.jsonTypeMapping) {
     const prismaTypeContent = generatePrismaTypeNamespace();
-    const prismaTypePath = join(outputDir, "prisma-type.ts");
+    const prismaTypePath = join(outputDir, "prisma-json.d.ts");
     writeFileSync(prismaTypePath, prismaTypeContent);
   }
 
@@ -112,10 +112,7 @@ export async function onGenerate(options: GeneratorOptions) {
     // Generate barrel export if enabled (skip if global is true since types are globally available)
     if (config.barrelExports && !config.global) {
       const exports: string[] = [];
-      // Export PrismaType namespace if jsonTypeMapping is enabled
-      if (config.jsonTypeMapping) {
-        exports.push(`export * from "./prisma-type";`);
-      }
+      // Note: prisma-json.d.ts contains a global namespace declaration, no need to export it
       for (const fileName of Array.from(allFileNames).sort()) {
         exports.push(`export * from "./${fileName}";`);
       }
@@ -252,22 +249,17 @@ export async function onGenerate(options: GeneratorOptions) {
   }
 
   // Generate barrel export if enabled (skip if global is true since types are globally available)
-  // Create index.ts if there are multiple files OR if jsonTypeMapping is enabled (to export PrismaType)
-  if (config.barrelExports && !config.global && (files.length > 1 || config.jsonTypeMapping)) {
+  // Create index.ts if there are multiple files
+  if (config.barrelExports && !config.global && files.length > 1) {
     const exports: string[] = [];
-    // Export PrismaType namespace if jsonTypeMapping is enabled
-    if (config.jsonTypeMapping) {
-      exports.push(`export * from "./prisma-type";`);
-    }
-    if (files.length > 0) {
-      const fileExports = files
-        .map((f) => {
-          const baseName = f.name.replace(".ts", "").replace(".d.ts", "");
-          return `export * from "./${baseName}";`;
-        })
-        .join("\n");
-      exports.push(fileExports);
-    }
+    // Note: prisma-type.ts contains a global namespace declaration, no need to export it
+    const fileExports = files
+      .map((f) => {
+        const baseName = f.name.replace(".ts", "").replace(".d.ts", "");
+        return `export * from "./${baseName}";`;
+      })
+      .join("\n");
+    exports.push(fileExports);
     writeFileSync(join(outputDir, "index.ts"), exports.join("\n") + "\n");
   }
 }

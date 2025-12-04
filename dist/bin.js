@@ -1455,16 +1455,146 @@ function extractJSDoc(comment) {
   if (!comment) return "";
   return comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
 }
-function parseTypeMappingFromComment(comment) {
+function parseTypeMappingFromComment(comment, jsonTypeMapping) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@type\s+\S+\s*=\s*(.+)/);
-  if (match && match[1]) {
-    const typeName = match[1].trim();
-    return typeName.replace(/\s*\/\/.*$/, "").trim();
+  const match = cleanComment.match(/@type\s+(\S+)\s*=\s*(.+)/);
+  if (match && match[1] && match[2]) {
+    const prismaType = match[1].trim();
+    let typeName = match[2].trim();
+    typeName = typeName.replace(/\s*\/\/.*$/, "").trim();
+    if (prismaType === "Json" && jsonTypeMapping) {
+      if (typeName === "any" || typeName === "Json") {
+        return "PrismaType.Json";
+      }
+      if (typeName.startsWith("PrismaType.")) {
+        return typeName;
+      }
+      const isSimpleIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(typeName);
+      if (isSimpleIdentifier) {
+        return `PrismaType.${typeName}`;
+      }
+      const typeKeywords = /* @__PURE__ */ new Set([
+        "string",
+        "number",
+        "boolean",
+        "any",
+        "unknown",
+        "never",
+        "void",
+        "Record",
+        "Array",
+        "Promise",
+        "Partial",
+        "Required",
+        "Readonly",
+        "Pick",
+        "Omit"
+      ]);
+      let result = typeName;
+      let offset = 0;
+      const matches = Array.from(
+        typeName.matchAll(/\b([A-Z][a-zA-Z0-9_$]*)\b/g)
+      );
+      for (const match2 of matches) {
+        const identifier = match2[1];
+        const matchIndex = match2.index;
+        if (typeKeywords.has(identifier)) {
+          continue;
+        }
+        const beforeMatch = result.substring(
+          Math.max(0, matchIndex + offset - 11),
+          matchIndex + offset
+        );
+        if (beforeMatch === "PrismaType.") {
+          continue;
+        }
+        const before = result.substring(0, matchIndex + offset);
+        const after = result.substring(matchIndex + offset + identifier.length);
+        result = before + `PrismaType.${identifier}` + after;
+        offset += 11;
+      }
+      return result;
+    }
+    return typeName;
   }
   const simpleMatch = cleanComment.match(/@type\s+(\S+)=(\S+)/);
-  return simpleMatch ? simpleMatch[2] : null;
+  if (simpleMatch) {
+    const prismaType = simpleMatch[1];
+    const typeName = simpleMatch[2];
+    if (prismaType === "Json" && jsonTypeMapping) {
+      if (typeName === "any" || typeName === "Json") {
+        return "PrismaType.Json";
+      }
+      if (typeName.startsWith("PrismaType.")) {
+        return typeName;
+      }
+      const isSimpleIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(typeName);
+      if (isSimpleIdentifier) {
+        return `PrismaType.${typeName}`;
+      }
+      const typeKeywords = /* @__PURE__ */ new Set([
+        "string",
+        "number",
+        "boolean",
+        "any",
+        "unknown",
+        "never",
+        "void",
+        "Record",
+        "Array",
+        "Promise",
+        "Partial",
+        "Required",
+        "Readonly",
+        "Pick",
+        "Omit"
+      ]);
+      let result = typeName;
+      let offset = 0;
+      const matches = Array.from(
+        typeName.matchAll(/\b([A-Z][a-zA-Z0-9_$]*)\b/g)
+      );
+      for (const match2 of matches) {
+        const identifier = match2[1];
+        const matchIndex = match2.index;
+        if (typeKeywords.has(identifier)) {
+          continue;
+        }
+        const beforeMatch = result.substring(
+          Math.max(0, matchIndex + offset - 11),
+          matchIndex + offset
+        );
+        if (beforeMatch === "PrismaType.") {
+          continue;
+        }
+        const before = result.substring(0, matchIndex + offset);
+        const after = result.substring(matchIndex + offset + identifier.length);
+        result = before + `PrismaType.${identifier}` + after;
+        offset += 11;
+      }
+      return result;
+    }
+    return typeName;
+  }
+  return null;
+}
+function parseLooseEnumFromComment(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const strictMatch = cleanComment.match(/@type\s+!\s*\[(.*?)\]/);
+  const looseMatch = cleanComment.match(/@type\s+\[(.*?)\]/);
+  if (strictMatch) {
+    const valuesStr = strictMatch[1];
+    const values = valuesStr.split(",").map((v) => v.trim().replace(/^["']|["']$/g, "")).filter((v) => v.length > 0);
+    return { strict: true, values };
+  }
+  if (looseMatch) {
+    const valuesStr = looseMatch[1];
+    const values = valuesStr.split(",").map((v) => v.trim().replace(/^["']|["']$/g, "")).filter((v) => v.length > 0);
+    return { strict: false, values };
+  }
+  return null;
 }
 function shouldIncludeModel(modelName, include, exclude) {
   if (exclude) {
@@ -1531,22 +1661,44 @@ function generatePrismaTypeNamespace() {
   return `/**
  * PrismaType namespace for custom type mappings
  * This namespace is used when jsonTypeMapping is enabled
+ * 
+ * IMPORTANT: To extend this namespace with your own interfaces (like UserPreferences),
+ * create a file named 'prisma-json.ts' in your project and extend the global namespace:
+ * 
+ * // prisma-json.ts
+ * // This file must be a module, so we include an empty export.
+ * export {};
+ * 
+ * declare global {
+ *   namespace PrismaType {
+ *     interface Json {
+ *       [key: string]: any; // Customize as needed
+ *     }
+ *     interface UserPreferences {
+ *       theme: "light" | "dark";
+ *       language: "en" | "es";
+ *     }
+ *   }
+ * }
+ * 
+ * Make sure your prisma-json.ts file is included in your tsconfig.json 'include' array.
+ * 
+ * Then in your Prisma schema:
+ * /// @type Json=UserPreferences
+ * preferences Json  // Will use PrismaType.UserPreferences via namespace merging
+ * 
+ * Or use inline types:
+ * /// @type Json=any
+ * metadata Json  // Uses PrismaType.Json
  */
-export namespace PrismaType {
-  /**
-   * JSON type interface
-   * Extend this interface to customize the JSON type used throughout your application
-   * 
-   * @example
-   * // In your project, create a file that extends this:
-   * declare namespace PrismaType {
-   *   interface Json {
-   *     [key: string]: any;
-   *   }
-   * }
-   */
-  export interface Json {
-    [key: string]: unknown;
+// This file must be a module, so we include an empty export.
+export {};
+
+declare global {
+  namespace PrismaType {
+    interface Json {
+      [key: string]: any;
+    }
   }
 }
 `;
@@ -1567,7 +1719,12 @@ function generateTypes(options) {
   const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping);
   let output = "";
   if (jsonTypeMapping) {
-    output += `import { PrismaType } from "./prisma-type";
+    output += `// This file must be a module, so we include an empty export.
+`;
+    output += `export {};
+
+`;
+    output += `/// <reference path="./prisma-json.d.ts" />
 
 `;
   }
@@ -1608,13 +1765,23 @@ function generateTypes(options) {
       (field) => ["scalar", "enum"].includes(field.kind)
     );
     for (const field of scalarAndEnumFields) {
-      const customType = parseTypeMappingFromComment(field.documentation);
       const fieldComment = jsDocComments ? extractJSDoc(field.documentation) : "";
       let typeScriptType;
-      if (customType) {
-        typeScriptType = customType;
+      const looseEnum = parseLooseEnumFromComment(field.documentation);
+      if (looseEnum && field.type === "String") {
+        if (looseEnum.strict) {
+          typeScriptType = looseEnum.values.map((v) => `"${v}"`).join(" | ");
+        } else {
+          const literalUnion = looseEnum.values.map((v) => `"${v}"`).join(" | ");
+          typeScriptType = `${literalUnion} | (string & {})`;
+        }
       } else {
-        typeScriptType = getTypeScriptType(field.type, mappings);
+        const customType = parseTypeMappingFromComment(field.documentation, jsonTypeMapping);
+        if (customType) {
+          typeScriptType = customType;
+        } else {
+          typeScriptType = getTypeScriptType(field.type, mappings);
+        }
       }
       const nullability = field.isRequired ? "" : "| null";
       const list = field.isList ? "[]" : "";
@@ -1633,7 +1800,12 @@ function generateEnumType(enumType, options) {
   const { jsDocComments = false, jsonTypeMapping = false } = options;
   let output = "";
   if (jsonTypeMapping) {
-    output += `import { PrismaType } from "./prisma-type";
+    output += `// This file must be a module, so we include an empty export.
+`;
+    output += `export {};
+
+`;
+    output += `/// <reference path="./prisma-json.d.ts" />
 
 `;
   }
@@ -1663,7 +1835,12 @@ function generateModelType(model, options) {
   const mappings = parseTypeMappings(void 0, typeMappings, jsonTypeMapping);
   let output = "";
   if (jsonTypeMapping) {
-    output += `import { PrismaType } from "./prisma-type";
+    output += `// This file must be a module, so we include an empty export.
+`;
+    output += `export {};
+
+`;
+    output += `/// <reference path="./prisma-json.d.ts" />
 
 `;
   }
@@ -1678,13 +1855,23 @@ function generateModelType(model, options) {
     (field) => ["scalar", "enum"].includes(field.kind)
   );
   for (const field of scalarAndEnumFields) {
-    const customType = parseTypeMappingFromComment(field.documentation);
     const fieldComment = jsDocComments ? extractJSDoc(field.documentation) : "";
     let typeScriptType;
-    if (customType) {
-      typeScriptType = customType;
+    const looseEnum = parseLooseEnumFromComment(field.documentation);
+    if (looseEnum && field.type === "String") {
+      if (looseEnum.strict) {
+        typeScriptType = looseEnum.values.map((v) => `"${v}"`).join(" | ");
+      } else {
+        const literalUnion = looseEnum.values.map((v) => `"${v}"`).join(" | ");
+        typeScriptType = `${literalUnion} | (string & {})`;
+      }
     } else {
-      typeScriptType = getTypeScriptType(field.type, mappings);
+      const customType = parseTypeMappingFromComment(field.documentation, jsonTypeMapping);
+      if (customType) {
+        typeScriptType = customType;
+      } else {
+        typeScriptType = getTypeScriptType(field.type, mappings);
+      }
     }
     const nullability = field.isRequired ? "" : "| null";
     const list = field.isList ? "[]" : "";
@@ -1711,7 +1898,7 @@ async function onGenerate(options) {
   const typeMappings = config.typeMappings || config.jsonTypeMapping ? parseTypeMappings(config.typeMappings, void 0, config.jsonTypeMapping) : void 0;
   if (config.jsonTypeMapping) {
     const prismaTypeContent = generatePrismaTypeNamespace();
-    const prismaTypePath = (0, import_node_path.join)(outputDir, "prisma-type.ts");
+    const prismaTypePath = (0, import_node_path.join)(outputDir, "prisma-json.d.ts");
     (0, import_node_fs.writeFileSync)(prismaTypePath, prismaTypeContent);
   }
   const filteredModels = dataModel.models.filter(
@@ -1763,9 +1950,6 @@ async function onGenerate(options) {
     }
     if (config.barrelExports && !config.global) {
       const exports2 = [];
-      if (config.jsonTypeMapping) {
-        exports2.push(`export * from "./prisma-type";`);
-      }
       for (const fileName of Array.from(allFileNames).sort()) {
         exports2.push(`export * from "./${fileName}";`);
       }
@@ -1877,18 +2061,13 @@ async function onGenerate(options) {
     const filePath = (0, import_node_path.join)(outputDir, fileName);
     (0, import_node_fs.writeFileSync)(filePath, file.content);
   }
-  if (config.barrelExports && !config.global && (files.length > 1 || config.jsonTypeMapping)) {
+  if (config.barrelExports && !config.global && files.length > 1) {
     const exports2 = [];
-    if (config.jsonTypeMapping) {
-      exports2.push(`export * from "./prisma-type";`);
-    }
-    if (files.length > 0) {
-      const fileExports = files.map((f) => {
-        const baseName = f.name.replace(".ts", "").replace(".d.ts", "");
-        return `export * from "./${baseName}";`;
-      }).join("\n");
-      exports2.push(fileExports);
-    }
+    const fileExports = files.map((f) => {
+      const baseName = f.name.replace(".ts", "").replace(".d.ts", "");
+      return `export * from "./${baseName}";`;
+    }).join("\n");
+    exports2.push(fileExports);
     (0, import_node_fs.writeFileSync)((0, import_node_path.join)(outputDir, "index.ts"), exports2.join("\n") + "\n");
   }
 }

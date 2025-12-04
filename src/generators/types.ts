@@ -34,9 +34,12 @@ export function generateTypes(options: GenerateTypesOptions): string {
   const mappings = parseTypeMappings(undefined, typeMappings, jsonTypeMapping);
   let output = "";
 
-  // Add import for PrismaType namespace if jsonTypeMapping is enabled
+  // Add global namespace declaration if jsonTypeMapping is enabled
+  // This allows users to extend PrismaType namespace in their prisma-json.ts file
   if (jsonTypeMapping) {
-    output += `import { PrismaType } from "./prisma-type";\n\n`;
+    output += `// This file must be a module, so we include an empty export.\n`;
+    output += `export {};\n\n`;
+    output += `/// <reference path="./prisma-json.d.ts" />\n\n`;
   }
 
   // Use provided models/enums or fall back to dataModel
@@ -149,9 +152,11 @@ export function generateEnumType(
   const { jsDocComments = false, jsonTypeMapping = false } = options;
   let output = "";
 
-  // Add import for PrismaType namespace if jsonTypeMapping is enabled
+  // Add global namespace declaration if jsonTypeMapping is enabled
   if (jsonTypeMapping) {
-    output += `import { PrismaType } from "./prisma-type";\n\n`;
+    output += `// This file must be a module, so we include an empty export.\n`;
+    output += `export {};\n\n`;
+    output += `/// <reference path="./prisma-json.d.ts" />\n\n`;
   }
 
   const comment = jsDocComments ? extractJSDoc(enumType.documentation) : "";
@@ -190,9 +195,11 @@ export function generateModelType(
   const mappings = parseTypeMappings(undefined, typeMappings, jsonTypeMapping);
   let output = "";
 
-  // Add import for PrismaType namespace if jsonTypeMapping is enabled
+  // Add global namespace declaration if jsonTypeMapping is enabled
   if (jsonTypeMapping) {
-    output += `import { PrismaType } from "./prisma-type";\n\n`;
+    output += `// This file must be a module, so we include an empty export.\n`;
+    output += `export {};\n\n`;
+    output += `/// <reference path="./prisma-json.d.ts" />\n\n`;
   }
 
   const comment = jsDocComments ? extractJSDoc(model.documentation) : "";

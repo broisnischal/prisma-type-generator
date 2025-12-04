@@ -20,6 +20,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/util.ts
 var util_exports = {};
 __export(util_exports, {
+  calculatePrismaJsonPath: () => calculatePrismaJsonPath,
   extractJSDoc: () => extractJSDoc,
   generatePrismaTypeNamespace: () => generatePrismaTypeNamespace,
   getSchemaFileNameForModel: () => getSchemaFileNameForModel,
@@ -27,11 +28,24 @@ __export(util_exports, {
   groupEnumsBySchemaFile: () => groupEnumsBySchemaFile,
   groupModelsBySchemaFile: () => groupModelsBySchemaFile,
   modelToFileName: () => modelToFileName,
+  parseLooseEnumFromComment: () => parseLooseEnumFromComment,
   parseTypeMappingFromComment: () => parseTypeMappingFromComment,
   parseTypeMappings: () => parseTypeMappings,
   shouldIncludeModel: () => shouldIncludeModel
 });
 module.exports = __toCommonJS(util_exports);
+function calculatePrismaJsonPath(outputDir) {
+  const normalized = outputDir.replace(/\\/g, "/");
+  const segments = normalized.split("/").filter((s) => s && s !== ".");
+  const leadingDots = normalized.match(/^\.\.\//g);
+  const dotDotCount = leadingDots ? leadingDots.length : 0;
+  const totalDepth = dotDotCount + segments.length;
+  if (totalDepth === 0) {
+    return "./prisma-json.ts";
+  }
+  const upPath = "../".repeat(totalDepth);
+  return `${upPath}prisma-json.ts`;
+}
 function parseTypeMappings(mappings, defaultMappings, jsonTypeMapping) {
   const result = {
     Decimal: "number",
@@ -70,16 +84,146 @@ function extractJSDoc(comment) {
   if (!comment) return "";
   return comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
 }
-function parseTypeMappingFromComment(comment) {
+function parseTypeMappingFromComment(comment, jsonTypeMapping) {
   if (!comment) return null;
   const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
-  const match = cleanComment.match(/@type\s+\S+\s*=\s*(.+)/);
-  if (match && match[1]) {
-    const typeName = match[1].trim();
-    return typeName.replace(/\s*\/\/.*$/, "").trim();
+  const match = cleanComment.match(/@type\s+(\S+)\s*=\s*(.+)/);
+  if (match && match[1] && match[2]) {
+    const prismaType = match[1].trim();
+    let typeName = match[2].trim();
+    typeName = typeName.replace(/\s*\/\/.*$/, "").trim();
+    if (prismaType === "Json" && jsonTypeMapping) {
+      if (typeName === "any" || typeName === "Json") {
+        return "PrismaType.Json";
+      }
+      if (typeName.startsWith("PrismaType.")) {
+        return typeName;
+      }
+      const isSimpleIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(typeName);
+      if (isSimpleIdentifier) {
+        return `PrismaType.${typeName}`;
+      }
+      const typeKeywords = /* @__PURE__ */ new Set([
+        "string",
+        "number",
+        "boolean",
+        "any",
+        "unknown",
+        "never",
+        "void",
+        "Record",
+        "Array",
+        "Promise",
+        "Partial",
+        "Required",
+        "Readonly",
+        "Pick",
+        "Omit"
+      ]);
+      let result = typeName;
+      let offset = 0;
+      const matches = Array.from(
+        typeName.matchAll(/\b([A-Z][a-zA-Z0-9_$]*)\b/g)
+      );
+      for (const match2 of matches) {
+        const identifier = match2[1];
+        const matchIndex = match2.index;
+        if (typeKeywords.has(identifier)) {
+          continue;
+        }
+        const beforeMatch = result.substring(
+          Math.max(0, matchIndex + offset - 11),
+          matchIndex + offset
+        );
+        if (beforeMatch === "PrismaType.") {
+          continue;
+        }
+        const before = result.substring(0, matchIndex + offset);
+        const after = result.substring(matchIndex + offset + identifier.length);
+        result = before + `PrismaType.${identifier}` + after;
+        offset += 11;
+      }
+      return result;
+    }
+    return typeName;
   }
   const simpleMatch = cleanComment.match(/@type\s+(\S+)=(\S+)/);
-  return simpleMatch ? simpleMatch[2] : null;
+  if (simpleMatch) {
+    const prismaType = simpleMatch[1];
+    const typeName = simpleMatch[2];
+    if (prismaType === "Json" && jsonTypeMapping) {
+      if (typeName === "any" || typeName === "Json") {
+        return "PrismaType.Json";
+      }
+      if (typeName.startsWith("PrismaType.")) {
+        return typeName;
+      }
+      const isSimpleIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(typeName);
+      if (isSimpleIdentifier) {
+        return `PrismaType.${typeName}`;
+      }
+      const typeKeywords = /* @__PURE__ */ new Set([
+        "string",
+        "number",
+        "boolean",
+        "any",
+        "unknown",
+        "never",
+        "void",
+        "Record",
+        "Array",
+        "Promise",
+        "Partial",
+        "Required",
+        "Readonly",
+        "Pick",
+        "Omit"
+      ]);
+      let result = typeName;
+      let offset = 0;
+      const matches = Array.from(
+        typeName.matchAll(/\b([A-Z][a-zA-Z0-9_$]*)\b/g)
+      );
+      for (const match2 of matches) {
+        const identifier = match2[1];
+        const matchIndex = match2.index;
+        if (typeKeywords.has(identifier)) {
+          continue;
+        }
+        const beforeMatch = result.substring(
+          Math.max(0, matchIndex + offset - 11),
+          matchIndex + offset
+        );
+        if (beforeMatch === "PrismaType.") {
+          continue;
+        }
+        const before = result.substring(0, matchIndex + offset);
+        const after = result.substring(matchIndex + offset + identifier.length);
+        result = before + `PrismaType.${identifier}` + after;
+        offset += 11;
+      }
+      return result;
+    }
+    return typeName;
+  }
+  return null;
+}
+function parseLooseEnumFromComment(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const strictMatch = cleanComment.match(/@type\s+!\s*\[(.*?)\]/);
+  const looseMatch = cleanComment.match(/@type\s+\[(.*?)\]/);
+  if (strictMatch) {
+    const valuesStr = strictMatch[1];
+    const values = valuesStr.split(",").map((v) => v.trim().replace(/^["']|["']$/g, "")).filter((v) => v.length > 0);
+    return { strict: true, values };
+  }
+  if (looseMatch) {
+    const valuesStr = looseMatch[1];
+    const values = valuesStr.split(",").map((v) => v.trim().replace(/^["']|["']$/g, "")).filter((v) => v.length > 0);
+    return { strict: false, values };
+  }
+  return null;
 }
 function shouldIncludeModel(modelName, include, exclude) {
   if (exclude) {
@@ -146,28 +290,51 @@ function generatePrismaTypeNamespace() {
   return `/**
  * PrismaType namespace for custom type mappings
  * This namespace is used when jsonTypeMapping is enabled
+ * 
+ * IMPORTANT: To extend this namespace with your own interfaces (like UserPreferences),
+ * create a file named 'prisma-json.ts' in your project and extend the global namespace:
+ * 
+ * // prisma-json.ts
+ * // This file must be a module, so we include an empty export.
+ * export {};
+ * 
+ * declare global {
+ *   namespace PrismaType {
+ *     interface Json {
+ *       [key: string]: any; // Customize as needed
+ *     }
+ *     interface UserPreferences {
+ *       theme: "light" | "dark";
+ *       language: "en" | "es";
+ *     }
+ *   }
+ * }
+ * 
+ * Make sure your prisma-json.ts file is included in your tsconfig.json 'include' array.
+ * 
+ * Then in your Prisma schema:
+ * /// @type Json=UserPreferences
+ * preferences Json  // Will use PrismaType.UserPreferences via namespace merging
+ * 
+ * Or use inline types:
+ * /// @type Json=any
+ * metadata Json  // Uses PrismaType.Json
  */
-export namespace PrismaType {
-  /**
-   * JSON type interface
-   * Extend this interface to customize the JSON type used throughout your application
-   * 
-   * @example
-   * // In your project, create a file that extends this:
-   * declare namespace PrismaType {
-   *   interface Json {
-   *     [key: string]: any;
-   *   }
-   * }
-   */
-  export interface Json {
-    [key: string]: unknown;
+// This file must be a module, so we include an empty export.
+export {};
+
+declare global {
+  namespace PrismaType {
+    interface Json {
+      [key: string]: any;
+    }
   }
 }
 `;
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  calculatePrismaJsonPath,
   extractJSDoc,
   generatePrismaTypeNamespace,
   getSchemaFileNameForModel,
@@ -175,6 +342,7 @@ export namespace PrismaType {
   groupEnumsBySchemaFile,
   groupModelsBySchemaFile,
   modelToFileName,
+  parseLooseEnumFromComment,
   parseTypeMappingFromComment,
   parseTypeMappings,
   shouldIncludeModel
