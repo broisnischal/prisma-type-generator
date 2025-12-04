@@ -1,6 +1,6 @@
 {
   "name": "prisma-type-generator",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "description": "Prisma type generator",
   "main": "dist/bin.js",
   "types": "./dist/bin.d.ts",
@@ -28,16 +28,16 @@
     "build:dts": "tsc --declaration --emitDeclarationOnly"
   },
   "peerDependencies": {
-    "@prisma/client": ">=6.0.0"
+    "@prisma/client": ">=6.0.0 || >=7.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.6.0",
-    "@prisma/client": "^6.2.1",
-    "@prisma/generator-helper": "^6.2.1",
+    "@prisma/client": "^7.1.0",
+    "@prisma/generator-helper": "^7.0.0",
     "@types/node": "^20.11.17",
     "changesets": "^1.0.2",
     "esbuild": "^0.24.2",
-    "prisma": "^6.2.1",
+    "prisma": "^7.1.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3"

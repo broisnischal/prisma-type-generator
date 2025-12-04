@@ -27,10 +27,10 @@ export function parseConfig(
   return {
     global: config.global
       ? String(config.global).toLowerCase().trim() === "true"
-      : true,
+      : false,
     clear: config.clear
       ? String(config.clear).toLowerCase().trim() === "true"
-      : true,
+      : false,
     enumOnly: config.enumOnly
       ? String(config.enumOnly).toLowerCase().trim() === "true"
       : false,
