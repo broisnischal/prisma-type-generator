@@ -174,6 +174,7 @@ export async function onGenerate(options: GeneratorOptions) {
           modelFileMap,
           currentFileName,
           skipModuleHeader,
+          basicUtilityTypes: config.basicUtilityTypes ?? true,
         });
         typesContent += modelContent;
       }
@@ -257,6 +258,7 @@ export async function onGenerate(options: GeneratorOptions) {
           enumFileMap,
           modelFileMap,
           currentFileName: modelFileName,
+          basicUtilityTypes: config.basicUtilityTypes ?? true,
         });
 
         // Add global types if requested
@@ -308,6 +310,7 @@ export async function onGenerate(options: GeneratorOptions) {
         exclude: config.exclude,
         jsonTypeMapping: config.jsonTypeMapping ?? false,
         namespaceName,
+        basicUtilityTypes: config.basicUtilityTypes ?? true,
       });
 
       // Add global types if requested
@@ -346,6 +349,7 @@ export async function onGenerate(options: GeneratorOptions) {
         exclude: config.exclude,
         jsonTypeMapping: config.jsonTypeMapping ?? false,
         namespaceName,
+        basicUtilityTypes: config.basicUtilityTypes ?? true,
       });
 
       if (config.global) {

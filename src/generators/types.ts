@@ -26,6 +26,7 @@ export interface GenerateTypesOptions {
   enums?: readonly DMMF.Datamodel["enums"][number][];
   jsonTypeMapping?: boolean;
   namespaceName?: string;
+  basicUtilityTypes?: boolean;
 }
 
 export function generateTypes(options: GenerateTypesOptions): string {
@@ -39,6 +40,7 @@ export function generateTypes(options: GenerateTypesOptions): string {
     enums,
     jsonTypeMapping = false,
     namespaceName = "PrismaType",
+    basicUtilityTypes = true,
   } = options;
 
   const mappings = parseTypeMappings(undefined, typeMappings, jsonTypeMapping, namespaceName);
@@ -176,7 +178,10 @@ export function generateTypes(options: GenerateTypesOptions): string {
       model,
       dataModel,
       omitDirective,
-      jsonTypeMapping
+      jsonTypeMapping,
+      undefined,
+      undefined,
+      basicUtilityTypes
     );
     if (utilityTypes) {
       output += utilityTypes;
@@ -232,18 +237,56 @@ function generateUtilityTypes(
   omitDirective: { fields: string[]; typeName?: string } | null,
   jsonTypeMapping?: boolean,
   modelFileMap?: Map<string, string>, // Map model name to file name (without extension)
-  currentFileName?: string // Current file name (without extension)
+  currentFileName?: string, // Current file name (without extension)
+  basicUtilityTypes: boolean = true // Whether to generate basic utility types (Partial, Required, etc.)
 ): string {
-  // Always generate namespace with basic utility types
+  // Check if we need to generate any utility types at all
+  const hasOmitTypes = omitDirective && omitDirective.fields.length > 0;
+  const pickDirective = parsePickDirective(model.documentation);
+  const hasPickTypes = pickDirective && pickDirective.fields.length > 0;
+  const inputTypes = parseInputDirective(model.documentation);
+  const hasInputTypes = inputTypes && inputTypes.length > 0;
+  const groups = parseGroupDirective(model.documentation);
+  const hasGroupTypes = groups && groups.size > 0;
+  const withDirective = parseWithDirective(model.documentation);
+  const hasWithTypes = withDirective && withDirective.relations.length > 0;
+  const hasSelectTypes = parseSelectDirective(model.documentation);
+  const hasValidatedTypes = parseValidatedDirective(model.documentation);
+
+  // Only generate namespace if there are any utility types to generate
+  const hasAnyUtilityTypes =
+    basicUtilityTypes ||
+    hasOmitTypes ||
+    hasPickTypes ||
+    hasInputTypes ||
+    hasGroupTypes ||
+    hasWithTypes ||
+    hasSelectTypes ||
+    hasValidatedTypes;
+
+  if (!hasAnyUtilityTypes) {
+    return "";
+  }
+
   let namespaceOutput = `/**\n * Utility types for ${model.name}\n */\n`;
   namespaceOutput += `export namespace ${model.name} {\n`;
 
   // Define type helpers at the beginning to avoid naming conflicts
   // These are used by other utility types (like UpdateInput) that need to reference
   // the built-in TypeScript utility types without conflicting with namespace types
-  namespaceOutput += `  type _Partial<T> = { [P in keyof T]?: T[P] };\n`;
-  namespaceOutput += `  type _Required<T> = { [P in keyof T]-?: T[P] };\n`;
-  namespaceOutput += `  type _Readonly<T> = { readonly [P in keyof T]: T[P] };\n\n`;
+  // Only generate helpers if they're needed (for basic utility types or UpdateInput/custom input types)
+  const hasUpdateInputOrCustomInput = hasInputTypes && inputTypes?.some(name => name === "UpdateInput" || (name !== "CreateInput" && name !== "UpdateInput"));
+  const needsPartialHelper = basicUtilityTypes || hasUpdateInputOrCustomInput;
+  if (needsPartialHelper) {
+    namespaceOutput += `  type _Partial<T> = { [P in keyof T]?: T[P] };\n`;
+  }
+  if (basicUtilityTypes) {
+    namespaceOutput += `  type _Required<T> = { [P in keyof T]-?: T[P] };\n`;
+    namespaceOutput += `  type _Readonly<T> = { readonly [P in keyof T]: T[P] };\n`;
+  }
+  if (needsPartialHelper || basicUtilityTypes) {
+    namespaceOutput += `\n`;
+  }
 
   const scalarAndEnumFields = model.fields.filter((field) =>
     ["scalar", "enum"].includes(field.kind)
@@ -269,8 +312,7 @@ function generateUtilityTypes(
   }
 
   // 2. Pick types
-  const pickDirective = parsePickDirective(model.documentation);
-  if (pickDirective && pickDirective.fields.length > 0) {
+  if (hasPickTypes) {
     const pickUnion = pickDirective.fields.map((f) => `"${f}"`).join(" | ");
     const typeName = pickDirective.typeName || `Pick${pickDirective.fields.map((f) => f.charAt(0).toUpperCase() + f.slice(1)).join("")}`;
     namespaceOutput += `  /**\n   * ${model.name} with only ${pickDirective.fields.join(", ")}\n   */\n`;
@@ -278,8 +320,7 @@ function generateUtilityTypes(
   }
 
   // 3. Input types (CreateInput, UpdateInput)
-  const inputTypes = parseInputDirective(model.documentation);
-  if (inputTypes) {
+  if (hasInputTypes && inputTypes) {
     for (const inputTypeName of inputTypes) {
       if (inputTypeName === "CreateInput") {
         // CreateInput: omits id, createdAt, updatedAt
@@ -325,8 +366,7 @@ function generateUtilityTypes(
   }
 
   // 4. Group types
-  const groups = parseGroupDirective(model.documentation);
-  if (groups) {
+  if (hasGroupTypes && groups) {
     for (const [groupName, fields] of groups.entries()) {
       const pickUnion = fields.map((f) => `"${f}"`).join(" | ");
       const typeName = `${groupName.charAt(0).toUpperCase() + groupName.slice(1)}Fields`;
@@ -336,8 +376,7 @@ function generateUtilityTypes(
   }
 
   // 5. With types (relation types)
-  const withDirective = parseWithDirective(model.documentation);
-  if (withDirective && withDirective.relations.length > 0) {
+  if (hasWithTypes && withDirective) {
     const relationTypes: string[] = [];
     for (const relationName of withDirective.relations) {
       const relationField = relationFields.find((f) => f.name === relationName);
@@ -358,7 +397,7 @@ function generateUtilityTypes(
   }
 
   // 6. Select types
-  if (parseSelectDirective(model.documentation)) {
+  if (hasSelectTypes) {
     const selectFields = allFieldNames.map((f) => `    ${f}?: boolean;`).join("\n");
     namespaceOutput += `  /**\n   * Select type for Prisma queries\n   */\n`;
     namespaceOutput += `  export type Select = {\n`;
@@ -367,30 +406,34 @@ function generateUtilityTypes(
   }
 
   // 7. Validation types
-  const validatedTypeName = parseValidatedDirective(model.documentation);
-  if (validatedTypeName) {
-    namespaceOutput += `  /**\n   * Validated ${model.name} type\n   */\n`;
-    namespaceOutput += `  export type ${validatedTypeName} = ${model.name} & { __validated: true };\n\n`;
+  if (hasValidatedTypes) {
+    const validatedTypeName = parseValidatedDirective(model.documentation);
+    if (validatedTypeName) {
+      namespaceOutput += `  /**\n   * Validated ${model.name} type\n   */\n`;
+      namespaceOutput += `  export type ${validatedTypeName} = ${model.name} & { __validated: true };\n\n`;
+    }
   }
 
-  // 8. Basic utility types (always generate)
-  // Use type helpers defined at the beginning of the namespace
-  namespaceOutput += `  /**\n   * Make all fields optional\n   */\n`;
-  namespaceOutput += `  export type Partial = _Partial<${model.name}>;\n\n`;
-  namespaceOutput += `  /**\n   * Make all fields required\n   */\n`;
-  namespaceOutput += `  export type Required = _Required<${model.name}>;\n\n`;
-  namespaceOutput += `  /**\n   * Make all fields readonly\n   */\n`;
-  namespaceOutput += `  export type Readonly = _Readonly<${model.name}>;\n\n`;
+  // 8. Basic utility types (generate if enabled)
+  if (basicUtilityTypes) {
+    // Use type helpers defined at the beginning of the namespace
+    namespaceOutput += `  /**\n   * Make all fields optional\n   */\n`;
+    namespaceOutput += `  export type Partial = _Partial<${model.name}>;\n\n`;
+    namespaceOutput += `  /**\n   * Make all fields required\n   */\n`;
+    namespaceOutput += `  export type Required = _Required<${model.name}>;\n\n`;
+    namespaceOutput += `  /**\n   * Make all fields readonly\n   */\n`;
+    namespaceOutput += `  export type Readonly = _Readonly<${model.name}>;\n\n`;
 
-  // 9. Deep utility types (always generate)
-  namespaceOutput += `  /**\n   * Deep partial (recursive)\n   */\n`;
-  namespaceOutput += `  export type DeepPartial<T = ${model.name}> = {\n`;
-  namespaceOutput += `    [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];\n`;
-  namespaceOutput += `  };\n\n`;
-  namespaceOutput += `  /**\n   * Deep required (recursive)\n   */\n`;
-  namespaceOutput += `  export type DeepRequired<T = ${model.name}> = {\n`;
-  namespaceOutput += `    [P in keyof T]-?: T[P] extends object ? DeepRequired<T[P]> : T[P];\n`;
-  namespaceOutput += `  };\n\n`;
+    // 9. Deep utility types
+    namespaceOutput += `  /**\n   * Deep partial (recursive)\n   */\n`;
+    namespaceOutput += `  export type DeepPartial<T = ${model.name}> = {\n`;
+    namespaceOutput += `    [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];\n`;
+    namespaceOutput += `  };\n\n`;
+    namespaceOutput += `  /**\n   * Deep required (recursive)\n   */\n`;
+    namespaceOutput += `  export type DeepRequired<T = ${model.name}> = {\n`;
+    namespaceOutput += `    [P in keyof T]-?: T[P] extends object ? DeepRequired<T[P]> : T[P];\n`;
+    namespaceOutput += `  };\n\n`;
+  }
 
   namespaceOutput += `}\n\n`;
   return namespaceOutput;
@@ -449,6 +492,7 @@ export function generateModelType(
     modelFileMap?: Map<string, string>; // Map model name to file name (without extension)
     currentFileName?: string; // Current file name (without extension)
     skipModuleHeader?: boolean;
+    basicUtilityTypes?: boolean;
   }
 ): string {
   const {
@@ -461,6 +505,7 @@ export function generateModelType(
     modelFileMap,
     currentFileName,
     skipModuleHeader = false,
+    basicUtilityTypes = true,
   } = options;
 
   const mappings = parseTypeMappings(undefined, typeMappings, jsonTypeMapping, namespaceName);
@@ -597,7 +642,8 @@ export function generateModelType(
     omitDirective,
     jsonTypeMapping,
     modelFileMap,
-    currentFileName
+    currentFileName,
+    basicUtilityTypes
   );
   if (utilityTypes) {
     output += utilityTypes;
