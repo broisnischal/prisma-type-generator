@@ -76,6 +76,101 @@ export function extractJSDoc(comment?: string | null): string {
 }
 
 /**
+ * Parse @omit directive from Prisma model comment
+ * Format: /// @omit createdAt,updatedAt
+ * Format: /// @omit createdAt,updatedAt WithoutTimestamps
+ * Returns object with fields to omit and optional type name, or null if not found
+ */
+export function parseOmitDirective(
+  comment?: string | null
+): { fields: string[]; typeName?: string } | null {
+  if (!comment) return null;
+
+  // Extract the comment text (remove /// markers)
+  const cleanComment = comment
+    .replace(/^\/\/\/\s*/gm, "")
+    .replace(/^\/\/\s*/gm, "")
+    .trim();
+
+  // Match @omit followed by comma-separated field names and optional type name
+  // Examples:
+  // @omit createdAt,updatedAt
+  // @omit createdAt,updatedAt WithoutTimestamps
+  // @omit password WithoutPassword
+  const match = cleanComment.match(/@omit\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match && match[1]) {
+    const fieldsStr = match[1].trim();
+    const typeName = match[2]?.trim();
+
+    const fields = fieldsStr
+      .split(",")
+      .map((f) => f.trim())
+      .filter((f) => f.length > 0);
+
+    if (fields.length > 0) {
+      return {
+        fields,
+        typeName: typeName || undefined,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Generate a semantic type name for omitted fields
+ * Examples:
+ * - ["createdAt", "updatedAt"] -> "WithoutTimestamps"
+ * - ["password"] -> "WithoutPassword"
+ * - ["deletedAt"] -> "WithoutDeletedAt"
+ * - ["createdAt", "updatedAt", "deletedAt"] -> "WithoutTimestampsAndDeletedAt"
+ */
+export function generateOmitTypeName(omitFields: string[]): string {
+  // Common patterns for semantic naming
+  const timestampFields = new Set(["createdAt", "updatedAt"]);
+  const isTimestamps = omitFields.every((f) => timestampFields.has(f));
+
+  if (isTimestamps && omitFields.length === 2) {
+    return "WithoutTimestamps";
+  }
+
+  // Single field - use semantic name if common
+  if (omitFields.length === 1) {
+    const field = omitFields[0];
+    const semanticNames: Record<string, string> = {
+      password: "WithoutPassword",
+      deletedAt: "WithoutDeletedAt",
+      id: "WithoutId",
+    };
+    return (
+      semanticNames[field] ||
+      `Without${field.charAt(0).toUpperCase() + field.slice(1)}`
+    );
+  }
+
+  // Multiple fields - combine intelligently
+  const timestamps = omitFields.filter((f) => timestampFields.has(f));
+  const others = omitFields.filter((f) => !timestampFields.has(f));
+
+  const parts: string[] = [];
+  if (timestamps.length === 2) {
+    parts.push("Timestamps");
+  } else if (timestamps.length > 0) {
+    parts.push(
+      ...timestamps.map((f) => f.charAt(0).toUpperCase() + f.slice(1))
+    );
+  }
+
+  if (others.length > 0) {
+    parts.push(...others.map((f) => f.charAt(0).toUpperCase() + f.slice(1)));
+  }
+
+  const connector = parts.length > 1 ? "And" : "";
+  return `Without${parts.join(connector)}`;
+}
+
+/**
  * Parse type mapping from Prisma comment
  * Format: /// @type Json=UserPreferences
  * Format: /// @type Json=Record<string, UserPreferences>

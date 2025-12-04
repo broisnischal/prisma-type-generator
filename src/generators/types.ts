@@ -5,6 +5,8 @@ import {
   parseTypeMappingFromComment,
   parseLooseEnumFromComment,
   parseTypeMappings,
+  parseOmitDirective,
+  generateOmitTypeName,
   type TypeMapping,
 } from "../util";
 
@@ -87,12 +89,18 @@ export function generateTypes(options: GenerateTypesOptions): string {
     const comment = jsDocComments ? extractJSDoc(model.documentation) : "";
     const jsDoc = comment ? `/**\n * ${comment}\n */\n` : "";
 
+    // Parse @omit directive from model documentation (for utility type generation)
+    const omitDirective = parseOmitDirective(model.documentation);
+    const omitFields = omitDirective?.fields || [];
+    const customTypeName = omitDirective?.typeName;
+
     output += `${jsDoc}export interface ${model.name} {\n`;
 
     const scalarAndEnumFields = model.fields.filter((field) =>
       ["scalar", "enum"].includes(field.kind)
     );
 
+    // Include all fields in the base interface
     for (const field of scalarAndEnumFields) {
       const fieldComment = jsDocComments
         ? extractJSDoc(field.documentation)
@@ -134,6 +142,19 @@ export function generateTypes(options: GenerateTypesOptions): string {
     }
 
     output += "}\n\n";
+
+    // Generate utility types in a namespace for cleaner access
+    if (omitFields.length > 0) {
+      const omitUnion = omitFields.map((f) => `"${f}"`).join(" | ");
+      // Use custom type name if provided, otherwise generate semantic name
+      const typeName = customTypeName || generateOmitTypeName(omitFields);
+      
+      output += `/**\n * Utility types for ${model.name}\n */\n`;
+      output += `export namespace ${model.name} {\n`;
+      output += `  /**\n   * ${model.name} without ${omitFields.join(", ")}\n   * Usage: type UserInput = ${model.name}.${typeName};\n   */\n`;
+      output += `  export type ${typeName} = Omit<${model.name}, ${omitUnion}>;\n`;
+      output += `}\n\n`;
+    }
   }
 
   return output;
@@ -205,12 +226,18 @@ export function generateModelType(
   const comment = jsDocComments ? extractJSDoc(model.documentation) : "";
   const jsDoc = comment ? `/**\n * ${comment}\n */\n` : "";
 
+  // Parse @omit directive from model documentation (for utility type generation)
+  const omitDirective = parseOmitDirective(model.documentation);
+  const omitFields = omitDirective?.fields || [];
+  const customTypeName = omitDirective?.typeName;
+
   output += `${jsDoc}export interface ${model.name} {\n`;
 
   const scalarAndEnumFields = model.fields.filter((field) =>
     ["scalar", "enum"].includes(field.kind)
   );
 
+  // Include all fields in the base interface
   for (const field of scalarAndEnumFields) {
     const fieldComment = jsDocComments
       ? extractJSDoc(field.documentation)
@@ -252,6 +279,19 @@ export function generateModelType(
   }
 
   output += "}\n\n";
+
+  // Generate utility types in a namespace for cleaner access
+  if (omitFields.length > 0) {
+    const omitUnion = omitFields.map((f) => `"${f}"`).join(" | ");
+    // Use custom type name if provided, otherwise generate semantic name
+    const typeName = customTypeName || generateOmitTypeName(omitFields);
+    
+    output += `/**\n * Utility types for ${model.name}\n */\n`;
+    output += `export namespace ${model.name} {\n`;
+    output += `  /**\n   * ${model.name} without ${omitFields.join(", ")}\n   * Usage: type UserInput = ${model.name}.${typeName};\n   */\n`;
+    output += `  export type ${typeName} = Omit<${model.name}, ${omitUnion}>;\n`;
+    output += `}\n\n`;
+  }
 
   return output;
 }

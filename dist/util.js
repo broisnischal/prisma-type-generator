@@ -22,6 +22,7 @@ var util_exports = {};
 __export(util_exports, {
   calculatePrismaJsonPath: () => calculatePrismaJsonPath,
   extractJSDoc: () => extractJSDoc,
+  generateOmitTypeName: () => generateOmitTypeName,
   generatePrismaTypeNamespace: () => generatePrismaTypeNamespace,
   getSchemaFileNameForModel: () => getSchemaFileNameForModel,
   getTypeScriptType: () => getTypeScriptType,
@@ -29,6 +30,7 @@ __export(util_exports, {
   groupModelsBySchemaFile: () => groupModelsBySchemaFile,
   modelToFileName: () => modelToFileName,
   parseLooseEnumFromComment: () => parseLooseEnumFromComment,
+  parseOmitDirective: () => parseOmitDirective,
   parseTypeMappingFromComment: () => parseTypeMappingFromComment,
   parseTypeMappings: () => parseTypeMappings,
   shouldIncludeModel: () => shouldIncludeModel
@@ -83,6 +85,54 @@ function getTypeScriptType(type, typeMappings) {
 function extractJSDoc(comment) {
   if (!comment) return "";
   return comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+}
+function parseOmitDirective(comment) {
+  if (!comment) return null;
+  const cleanComment = comment.replace(/^\/\/\/\s*/gm, "").replace(/^\/\/\s*/gm, "").trim();
+  const match = cleanComment.match(/@omit\s+(.+?)(?:\s+([A-Z][a-zA-Z0-9]*))?$/);
+  if (match && match[1]) {
+    const fieldsStr = match[1].trim();
+    const typeName = match[2]?.trim();
+    const fields = fieldsStr.split(",").map((f) => f.trim()).filter((f) => f.length > 0);
+    if (fields.length > 0) {
+      return {
+        fields,
+        typeName: typeName || void 0
+      };
+    }
+  }
+  return null;
+}
+function generateOmitTypeName(omitFields) {
+  const timestampFields = /* @__PURE__ */ new Set(["createdAt", "updatedAt"]);
+  const isTimestamps = omitFields.every((f) => timestampFields.has(f));
+  if (isTimestamps && omitFields.length === 2) {
+    return "WithoutTimestamps";
+  }
+  if (omitFields.length === 1) {
+    const field = omitFields[0];
+    const semanticNames = {
+      password: "WithoutPassword",
+      deletedAt: "WithoutDeletedAt",
+      id: "WithoutId"
+    };
+    return semanticNames[field] || `Without${field.charAt(0).toUpperCase() + field.slice(1)}`;
+  }
+  const timestamps = omitFields.filter((f) => timestampFields.has(f));
+  const others = omitFields.filter((f) => !timestampFields.has(f));
+  const parts = [];
+  if (timestamps.length === 2) {
+    parts.push("Timestamps");
+  } else if (timestamps.length > 0) {
+    parts.push(
+      ...timestamps.map((f) => f.charAt(0).toUpperCase() + f.slice(1))
+    );
+  }
+  if (others.length > 0) {
+    parts.push(...others.map((f) => f.charAt(0).toUpperCase() + f.slice(1)));
+  }
+  const connector = parts.length > 1 ? "And" : "";
+  return `Without${parts.join(connector)}`;
 }
 function parseTypeMappingFromComment(comment, jsonTypeMapping) {
   if (!comment) return null;
@@ -336,6 +386,7 @@ declare global {
 0 && (module.exports = {
   calculatePrismaJsonPath,
   extractJSDoc,
+  generateOmitTypeName,
   generatePrismaTypeNamespace,
   getSchemaFileNameForModel,
   getTypeScriptType,
@@ -343,6 +394,7 @@ declare global {
   groupModelsBySchemaFile,
   modelToFileName,
   parseLooseEnumFromComment,
+  parseOmitDirective,
   parseTypeMappingFromComment,
   parseTypeMappings,
   shouldIncludeModel
