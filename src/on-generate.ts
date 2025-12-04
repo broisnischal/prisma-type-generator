@@ -17,6 +17,7 @@ import {
   generateTypes,
   generateModelType,
   generateEnumType,
+  collectModelImports,
 } from "./generators/types";
 
 export async function onGenerate(options: GeneratorOptions) {
@@ -162,7 +163,24 @@ export async function onGenerate(options: GeneratorOptions) {
         typesContent += enumContent;
       }
 
-      // Generate models with enum and model imports
+      // Collect all imports needed for all models in this file (to avoid duplicates)
+      const allImports = new Set<string>();
+      for (const model of fileModels) {
+        const modelImports = collectModelImports(model, {
+          dataModel,
+          enumFileMap,
+          modelFileMap,
+          currentFileName,
+        });
+        modelImports.forEach(imp => allImports.add(imp));
+      }
+
+      // Add all imports once at the top (after enums, before models)
+      if (allImports.size > 0) {
+        typesContent += Array.from(allImports).sort().join("\n") + "\n\n";
+      }
+
+      // Generate models without individual imports (skipImports: true)
       for (const model of fileModels) {
         const modelContent = generateModelType(model, {
           typeMappings,
@@ -175,6 +193,7 @@ export async function onGenerate(options: GeneratorOptions) {
           currentFileName,
           skipModuleHeader,
           basicUtilityTypes: config.basicUtilityTypes ?? true,
+          skipImports: true, // Skip imports since we added them at file level
         });
         typesContent += modelContent;
       }

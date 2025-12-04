@@ -229,6 +229,73 @@ function collectReferencedModels(
 }
 
 /**
+ * Collect all imports needed for a model (enums and referenced models)
+ * Returns a Set of import statements
+ */
+export function collectModelImports(
+  model: DMMF.Model,
+  options: {
+    dataModel?: DMMF.Datamodel;
+    enumFileMap?: Map<string, string>;
+    modelFileMap?: Map<string, string>;
+    currentFileName?: string;
+  }
+): Set<string> {
+  const { dataModel, enumFileMap, modelFileMap, currentFileName } = options;
+  const imports = new Set<string>();
+
+  if (!currentFileName) {
+    return imports;
+  }
+
+  // Collect enum types used by this model
+  const usedEnums = new Set<string>();
+  const scalarAndEnumFields = model.fields.filter((field) =>
+    ["scalar", "enum"].includes(field.kind)
+  );
+
+  // Build a set of all enum names for quick lookup
+  const allEnumNames = new Set<string>();
+  if (dataModel?.enums) {
+    for (const enumType of dataModel.enums) {
+      allEnumNames.add(enumType.name);
+    }
+  }
+
+  for (const field of scalarAndEnumFields) {
+    // Check if field is an enum type
+    if (field.kind === "enum") {
+      usedEnums.add(field.type);
+    }
+  }
+
+  // Collect model types referenced in relation types (@with directive)
+  const referencedModels = collectReferencedModels(model, modelFileMap, currentFileName);
+
+  // Generate import statements for enums in different files
+  if (enumFileMap && usedEnums.size > 0) {
+    for (const enumName of usedEnums) {
+      const enumFileName = enumFileMap.get(enumName);
+      if (enumFileName && enumFileName !== currentFileName) {
+        imports.add(`import type { ${enumName} } from "./${enumFileName}";`);
+      }
+    }
+  }
+
+  // Generate import statements for models referenced in relation types
+  if (modelFileMap && referencedModels.size > 0) {
+    for (const modelName of referencedModels) {
+      const modelFileName = modelFileMap.get(modelName);
+      if (modelFileName && modelFileName !== currentFileName) {
+        imports.add(`import type { ${modelName} } from "./${modelFileName}";`);
+      }
+    }
+  }
+
+  return imports;
+}
+
+/**
  * Generate all utility types for a model in a namespace
  */
 function generateUtilityTypes(
@@ -493,6 +560,7 @@ export function generateModelType(
     currentFileName?: string; // Current file name (without extension)
     skipModuleHeader?: boolean;
     basicUtilityTypes?: boolean;
+    skipImports?: boolean; // Skip generating imports (for file-level import collection)
   }
 ): string {
   const {
@@ -506,6 +574,7 @@ export function generateModelType(
     currentFileName,
     skipModuleHeader = false,
     basicUtilityTypes = true,
+    skipImports = false,
   } = options;
 
   const mappings = parseTypeMappings(undefined, typeMappings, jsonTypeMapping, namespaceName);
@@ -552,33 +621,35 @@ export function generateModelType(
   // Collect model types referenced in relation types (@with directive)
   const referencedModels = collectReferencedModels(model, modelFileMap, currentFileName);
 
-  // Generate import statements for enums in different files
-  const imports: string[] = [];
-  if (enumFileMap && currentFileName && usedEnums.size > 0) {
-    for (const enumName of usedEnums) {
-      const enumFileName = enumFileMap.get(enumName);
-      // Only add import if enum is in a different file
-      // If enumFileName is undefined, the enum might be in the same file or not generated
-      if (enumFileName && enumFileName !== currentFileName) {
-        imports.push(`import type { ${enumName} } from "./${enumFileName}";`);
-      }
-      // If enumFileName is undefined, log a warning (but don't break generation)
-      // This could happen if the enum wasn't included in the enumFileMap
-    }
-  }
-
-  // Generate import statements for models referenced in relation types
-  if (modelFileMap && currentFileName && referencedModels.size > 0) {
-    for (const modelName of referencedModels) {
-      const modelFileName = modelFileMap.get(modelName);
-      if (modelFileName && modelFileName !== currentFileName) {
-        imports.push(`import type { ${modelName} } from "./${modelFileName}";`);
+  // Generate import statements for enums in different files (skip if skipImports is true)
+  if (!skipImports) {
+    const imports: string[] = [];
+    if (enumFileMap && currentFileName && usedEnums.size > 0) {
+      for (const enumName of usedEnums) {
+        const enumFileName = enumFileMap.get(enumName);
+        // Only add import if enum is in a different file
+        // If enumFileName is undefined, the enum might be in the same file or not generated
+        if (enumFileName && enumFileName !== currentFileName) {
+          imports.push(`import type { ${enumName} } from "./${enumFileName}";`);
+        }
+        // If enumFileName is undefined, log a warning (but don't break generation)
+        // This could happen if the enum wasn't included in the enumFileMap
       }
     }
-  }
 
-  if (imports.length > 0) {
-    output += imports.join("\n") + "\n\n";
+    // Generate import statements for models referenced in relation types
+    if (modelFileMap && currentFileName && referencedModels.size > 0) {
+      for (const modelName of referencedModels) {
+        const modelFileName = modelFileMap.get(modelName);
+        if (modelFileName && modelFileName !== currentFileName) {
+          imports.push(`import type { ${modelName} } from "./${modelFileName}";`);
+        }
+      }
+    }
+
+    if (imports.length > 0) {
+      output += imports.join("\n") + "\n\n";
+    }
   }
 
   const comment = jsDocComments ? extractJSDoc(model.documentation) : "";
