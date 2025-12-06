@@ -1,6 +1,6 @@
 {
   "name": "prisma-type-generator",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Prisma type generator for generating types from Prisma schema, with support for JSON type mapping and split by schema and many more.",
   "main": "dist/bin.js",
   "types": "./dist/bin.d.ts",

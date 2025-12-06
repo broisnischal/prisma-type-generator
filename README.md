@@ -417,7 +417,9 @@ model User {
 }
 ```
 
-**prisma-json.d.ts (create this file):**
+**prisma-type.ts (create this file in your project dir):**
+
+Make sure to include this file in the tsconfig, also you can specify the path to the generated files,
 
 ```ts
 // Extend PrismaType namespace with your JSON types
