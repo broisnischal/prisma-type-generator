@@ -518,11 +518,7 @@ export interface User {
 
 ### Field-Level Type Overrides (`@type`)
 
-**What it does:** Override the TypeScript type for specific fields using comments.
-
-**When to use:** Per-field customization, API compatibility, or when different fields need different type representations.
-
-**Why use it:** Fine-grained control over individual fields, perfect for cases where global mappings don't fit all fields.
+Override the TypeScript type for specific fields using comments. Per-field customization, API compatibility, or when different fields need different type representations.
 
 **Example:**
 
@@ -536,11 +532,7 @@ model User {
   preferences Json     // This field will be UserPreferences, not Record<string, unknown>
 }
 
-// Define UserPreferences elsewhere
-interface UserPreferences {
-  theme: "light" | "dark";
-  notifications: boolean;
-}
+// Define UserPreferences in namespace
 ```
 
 **Generated TypeScript:**
@@ -553,17 +545,11 @@ export interface User {
 }
 ```
 
-**Use Case:** API that returns dates as ISO strings, or JSON fields with known structure that you want strongly typed.
-
 ---
 
 ### Loose Autocomplete Enums
 
-**What it does:** Creates string fields with autocomplete suggestions while still allowing other values (flexible enums).
-
-**When to use:** Extensible string fields, when you want autocomplete but need flexibility, or future-proof enums.
-
-**Why use it:** Best of both worlds - autocomplete suggestions for common values, but still accepts any string for extensibility.
+Creates string fields with autocomplete suggestions while still allowing other values (flexible enums).
 
 **Example:**
 
@@ -602,65 +588,6 @@ export interface User {
 }
 ```
 
-**Usage:**
-
-```ts
-const user1: User = {
-  authProvider: "email", // ✅ Autocomplete works
-  // ...
-};
-
-const user2: User = {
-  authProvider: "github", // ✅ Also allowed (flexible)
-  // ...
-};
-```
-
-**Use Case:** Auth providers where you have common ones (email, google) but may add more in the future (github, apple, etc.).
-
----
-
-## Utility Types
-
-### Always-Generated Utility Types
-
-Every model automatically gets these utility types in a namespace (unless `basicUtilityTypes = false`):
-
-- `Partial` - Makes all fields optional
-- `Required` - Makes all fields required
-- `Readonly` - Makes all fields readonly
-- `DeepPartial` - Recursive partial (works with nested objects)
-- `DeepRequired` - Recursive required (works with nested objects)
-
-**Example:**
-
-```prisma
-model User {
-  id        String   @id
-  name      String
-  email     String?
-  createdAt DateTime
-}
-```
-
-**Generated Types:**
-
-```ts
-export namespace User {
-  export type Partial = Partial<User>;
-  export type Required = Required<User>;
-  export type Readonly = Readonly<User>;
-  export type DeepPartial<T = User> = {
-    [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-  };
-  export type DeepRequired<T = User> = {
-    [P in keyof T]-?: T[P] extends object ? DeepRequired<T[P]> : T[P];
-  };
-}
-```
-
-**Use Case:** Form handling, API updates, validation, or when you need to transform types.
-
 ---
 
 ## Directive-Based Utility Types
@@ -669,11 +596,7 @@ Add directives to your Prisma models to generate additional utility types. These
 
 ### `@input` - Input Types (Create/Update DTOs)
 
-**What it does:** Generates `CreateInput` and `UpdateInput` types that automatically exclude auto-generated fields.
-
-**When to use:** API endpoints, form handling, DTOs, or when creating/updating entities.
-
-**Why use it:** Type-safe creation and updates, automatically excludes `id`, `createdAt`, `updatedAt`, and other auto-generated fields.
+Generates `CreateInput` and `UpdateInput` types that automatically exclude auto-generated fields.
 
 **Example:**
 
@@ -704,34 +627,11 @@ export namespace User {
 }
 ```
 
-**Usage:**
-
-```ts
-// Creating a user
-const newUser: User.CreateInput = {
-  name: "John Doe",
-  email: "john@example.com",
-  // id, createdAt, updatedAt are automatically excluded
-};
-
-// Updating a user
-const userUpdate: User.UpdateInput = {
-  name: "Jane Doe", // All fields are optional
-  // id cannot be included
-};
-```
-
-**Use Case:** REST API endpoints for creating and updating users, form validation schemas, or DTOs for API requests.
-
 ---
 
 ### `@select` - Select Types for Prisma Queries
 
-**What it does:** Generates a `Select` type for type-safe Prisma query select clauses.
-
-**When to use:** Type-safe Prisma queries, when you want autocomplete for select fields, or building query builders.
-
-**Why use it:** Autocomplete for select fields, type safety for Prisma queries, and better developer experience.
+Generates a `Select` type for type-safe Prisma query select clauses.
 
 **Example:**
 
@@ -764,7 +664,7 @@ export namespace User {
 **Usage:**
 
 ```ts
-// Type-safe Prisma select
+// Type-safe Prisma select // like: Prisma.UserSelectInput
 const selectClause: User.Select = {
   id: true,
   name: true,
@@ -778,17 +678,11 @@ const user = await prisma.user.findUnique({
 });
 ```
 
-**Use Case:** Building type-safe query builders, ensuring select clauses are correct, or when you want autocomplete for Prisma select operations.
-
 ---
 
 ### `@with` - Relation Types
 
-**What it does:** Generates types that include related models (e.g., `WithPosts`, `WithProfile`).
-
-**When to use:** Typing Prisma `include` operations, API responses with relations, or when you need type-safe related data.
-
-**Why use it:** Type-safe relations, better autocomplete, and ensures included relations match your schema.
+Generates types that include related models (e.g., `WithPosts`, `WithProfile`). Type-safe relations, better autocomplete, and ensures included relations match your schema.
 
 **Example:**
 
@@ -830,34 +724,11 @@ export namespace User {
 }
 ```
 
-**Usage:**
-
-```ts
-// Type-safe Prisma include
-const userWithPosts: User.WithPostsAndProfile = await prisma.user.findUnique({
-  where: { id: "123" },
-  include: {
-    posts: true,
-    profile: true,
-  },
-});
-
-// Access related data with type safety
-console.log(userWithPosts.posts[0].title); // ✅ Type-safe!
-console.log(userWithPosts.profile.bio); // ✅ Type-safe!
-```
-
-**Use Case:** API endpoints that return users with their posts and profile, or when you need type-safe access to related data.
-
 ---
 
 ### `@group` - Field Groups
 
-**What it does:** Groups related fields together into reusable types.
-
-**When to use:** Logical field grouping, reusable field sets, or when you want to organize related fields.
-
-**Why use it:** Better organization, reusable types, and easier to work with related fields as a group.
+Groups related fields together into reusable types. Logical field grouping, reusable field sets, or when you want to organize related fields.
 
 **Example:**
 
@@ -893,12 +764,6 @@ export namespace User {
 **Usage:**
 
 ```ts
-// Access timestamp fields
-const timestamps: User.TimestampsFields = {
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
-
 // Access auth fields
 const authData: User.AuthFields = {
   email: "john@example.com",
@@ -906,17 +771,11 @@ const authData: User.AuthFields = {
 };
 ```
 
-**Use Case:** Reusable field sets, form sections, or when you want to work with related fields as a group.
-
 ---
 
 ### `@validated` - Validation Types
 
-**What it does:** Generates a `Validated` type that marks data as validated with a `__validated: true` marker.
-
-**When to use:** Runtime validation, type guards, or when you need to distinguish validated from unvalidated data.
-
-**Why use it:** Type-safe validation, compile-time safety, and clear distinction between validated and unvalidated data.
+Generates a `Validated` type that marks data as validated with a `__validated: true` marker. Runtime validation, type guards, or when you need to distinguish validated from unvalidated data. Type-safe validation, compile-time safety, and clear distinction between validated and unvalidated data.
 
 **Example:**
 
@@ -971,22 +830,16 @@ if (validated) {
 }
 ```
 
-**Use Case:** API validation where you want to ensure data is validated before processing, or type guards that mark data as validated.
-
 ---
 
 ### `@omit` - Omit Types
 
-**What it does:** Generates types that exclude specific fields from a model.
-
-**When to use:** Public APIs, DTOs, hiding sensitive data, or when you need types without certain fields.
-
-**Why use it:** Type-safe field exclusion, security (hiding sensitive fields), and clean public APIs.
+Generates types that exclude specific fields from a model.
 
 **Example:**
 
 ```prisma
-/// @omit createdAt,updatedAt
+/// @omit createdAt,updatedAt WithoutTimestamps
 model User {
   id        String   @id
   name      String
@@ -1008,19 +861,6 @@ export namespace User {
 }
 ```
 
-**Usage:**
-
-```ts
-// User without timestamps
-const publicUser: User.WithoutTimestamps = {
-  id: "123",
-  name: "John",
-  email: "john@example.com",
-  password: "hashed",
-  // createdAt and updatedAt are excluded
-};
-```
-
 **Custom Type Name:**
 
 ```prisma
@@ -1036,17 +876,11 @@ model User {
 export type UserPublic = Omit<User, "password">;
 ```
 
-**Use Case:** Public API responses that exclude internal timestamps, or DTOs that hide sensitive fields like passwords.
-
 ---
 
 ### `@pick` - Pick Types
 
-**What it does:** Generates types that include only specific fields from a model.
-
-**When to use:** Public APIs, minimal DTOs, selective field exposure, or when you need lightweight types.
-
-**Why use it:** Type-safe field selection, minimal types, and clean public APIs with only necessary fields.
+Generates types that include only specific fields from a model. Type-safe field selection, minimal types, and clean public APIs with only necessary fields.
 
 **Example:**
 
@@ -1099,28 +933,30 @@ model User {
 export type UserBasic = Pick<User, "id" | "name" | "email">;
 ```
 
-**Use Case:** Public API responses with minimal user data, user lists that only show basic info, or lightweight DTOs.
-
 ---
 
 📖 **[See Complete Features Documentation →](./FEATURES.md)** - Even more detailed examples and advanced usage patterns
 
 ## Configuration Options
 
-| Option            | Type    | Default                | Description                                         |
-| ----------------- | ------- | ---------------------- | --------------------------------------------------- |
-| `output`          | string  | `"../generated/types"` | Output directory for generated types                |
-| `global`          | boolean | `false`                | Generate global types with `T` prefix               |
-| `clear`           | boolean | `false`                | Clear output directory before generating            |
-| `enumOnly`        | boolean | `false`                | Only generate enum types (skip models)              |
-| `include`         | string  | -                      | Include only these models (comma-separated)         |
-| `exclude`         | string  | -                      | Exclude these models (comma-separated)              |
-| `typeMappings`    | string  | -                      | Custom type mappings (e.g., `"DateTime=string"`)    |
-| `jsonTypeMapping` | boolean | `false`                | Enable PrismaType namespace for JSON types          |
-| `jsDocComments`   | boolean | `false`                | Generate JSDoc comments from Prisma schema comments |
-| `splitFiles`      | boolean | `false`                | Split output into separate files per model/enum     |
-| `splitBySchema`   | boolean | `false`                | Split types by schema file names                    |
-| `barrelExports`   | boolean | `true`                 | Generate barrel exports (index.ts)                  |
+| Option              | Type    | Default                | Description                                         |
+| ------------------- | ------- | ---------------------- | --------------------------------------------------- |
+| `output`            | string  | `"../generated/types"` | Output directory for generated types                |
+| `global`            | boolean | `false`                | Generate global types with `T` prefix               |
+| `clear`             | boolean | `false`                | Clear output directory before generating            |
+| `enumOnly`          | boolean | `false`                | Only generate enum types (skip models)              |
+| `include`           | string  | -                      | Include only these models (comma-separated)         |
+| `exclude`           | string  | -                      | Exclude these models (comma-separated)              |
+| `typeMappings`      | string  | -                      | Custom type mappings (e.g., `"DateTime=string"`)    |
+| `jsonTypeMapping`   | boolean | `false`                | Enable PrismaType namespace for JSON types          |
+| `namespaceName`     | string  | `PrismaType`           | namespace for the jsonTypeMapping                   |
+| `jsDocComments`     | boolean | `false`                | Generate JSDoc comments from Prisma schema comments |
+| `splitFiles`        | boolean | `false`                | Split output into separate files per model/enum     |
+| `splitBySchema`     | boolean | `false`                | Split types by schema file names                    |
+| `barrelExports`     | boolean | `true`                 | Generate barrel exports (index.ts)                  |
+| `basicUtilityTypes` | boolean | `true`                 | Generate basics utility types (default=true)        |
+
+basicUtilityTypes
 
 ## Complete Example
 
@@ -1186,58 +1022,6 @@ export namespace User {
   export type Partial = Partial<User>;
   export type Required = Required<User>;
   // ... more utility types
-}
-```
-
-## Prisma Client vs Generated Types
-
-| Feature             | Prisma Client Types      | Generated Types             |
-| ------------------- | ------------------------ | --------------------------- |
-| **Size**            | ~2MB+ (includes runtime) | ~few KB (types only)        |
-| **Use in Frontend** | ❌ Too heavy             | ✅ Perfect                  |
-| **Complexity**      | Complex utility types    | Simple interfaces           |
-| **Runtime Code**    | ✅ Includes runtime      | ❌ Types only               |
-| **Use Cases**       | Database operations      | Type definitions, API types |
-
-**When to use Prisma Client types:** Backend database operations, complex queries
-
-**When to use Generated types:** Frontend components, API response types, type sharing, form validation
-
-## Next.js Example
-
-**Backend API Route:**
-
-```ts
-// app/api/users/route.ts
-import { prisma } from "@/lib/prisma";
-import type { User } from "@/generated/types/prisma";
-
-export async function GET(): Promise<Response> {
-  const users: User[] = await prisma.user.findMany();
-  return Response.json(users);
-}
-```
-
-**Frontend Component:**
-
-```ts
-// app/users/page.tsx
-import type { User } from "@/generated/types/prisma";
-
-async function getUsers(): Promise<User[]> {
-  const res = await fetch("/api/users");
-  return res.json();
-}
-
-export default async function UsersPage() {
-  const users = await getUsers(); // Type-safe!
-  return (
-    <div>
-      {users.map((u) => (
-        <div key={u.id}>{u.name}</div>
-      ))}
-    </div>
-  );
 }
 ```
 
