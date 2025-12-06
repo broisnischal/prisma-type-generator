@@ -13,6 +13,7 @@ Generate lightweight TypeScript types from your Prisma schema. Perfect for front
 
 ```bash
 npm install prisma-type-generator
+// ni prisma-type-generator
 ```
 
 **2. Add to `schema.prisma`:**

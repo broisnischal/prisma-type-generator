@@ -69,25 +69,18 @@ export function getTypeScriptType(
 
 export function extractJSDoc(comment?: string | null): string {
   if (!comment) return "";
-  // Remove Prisma comment markers (/// or //)
   return comment
     .replace(/^\/\/\/\s*/gm, "")
     .replace(/^\/\/\s*/gm, "")
     .trim();
 }
 
-/**
- * Parse @omit directive from Prisma model comment
- * Format: /// @omit createdAt,updatedAt
- * Format: /// @omit createdAt,updatedAt WithoutTimestamps
- * Returns object with fields to omit and optional type name, or null if not found
- */
+
 export function parseOmitDirective(
   comment?: string | null
 ): { fields: string[]; typeName?: string } | null {
   if (!comment) return null;
 
-  // Extract the comment text (remove /// markers)
   const cleanComment = comment
     .replace(/^\/\/\/\s*/gm, "")
     .replace(/^\/\/\s*/gm, "")

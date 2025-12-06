@@ -105,7 +105,6 @@ export function parseConfig(
   const splitFiles = parseBoolean(config.splitFiles, false);
   const splitBySchema = parseBoolean(config.splitBySchema, false);
 
-  // Validate that splitFiles and splitBySchema are not both enabled
   if (splitFiles && splitBySchema) {
     throw new Error(
       "Cannot use 'splitFiles' and 'splitBySchema' together. These options are mutually exclusive. Please use only one of them."

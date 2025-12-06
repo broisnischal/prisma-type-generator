@@ -4,5 +4,6 @@ export function onManifest(): GeneratorManifest {
   return {
     defaultOutput: "../generated/types",
     prettyName: "Prisma Type Generator",
+    denylists: {},
   };
 }
