@@ -5,20 +5,21 @@
 ![GitHub top language](https://img.shields.io/github/languages/top/broisnischal/prisma-type-generator?style=plastic)
 [![License](https://img.shields.io/npm/l/prisma-type-generator.svg)](https://opensource.org/licenses/MIT)
 
-Generate lightweight TypeScript types from your Prisma schema. Perfect for frontend type sharing without importing heavy Prisma Client.
+Generate lightweight TypeScript types from your Prisma schema. Perfect for frontend type sharing without importing heavy Prisma Client. Make sure to not add/edit the generated files as they vanishes after the new generate.
 
 ## Quick Start
 
-**1. Install:**
+**1. Installation :**
 
 ```bash
 npm install prisma-type-generator
-// ni prisma-type-generator
+
+# ni prisma-type-generator (@antfu/ni)
 ```
 
-**2. Add to `schema.prisma`:**
+**2. Add generator to `schema.prisma`:**
 
-```prisma
+```ts
 generator types {
   provider = "prisma-type-generator"
   output   = "../generated/types"
@@ -28,7 +29,7 @@ generator types {
 **3. Generate:**
 
 ```bash
-npx prisma generate
+npx prisma generate --no-hints
 ```
 
 **4. Use:**
@@ -69,11 +70,7 @@ import type { User, Profile } from "../generated/types/prisma";
 
 ### Core Type Generation
 
-**What it does:** Generates TypeScript interfaces from Prisma models and enum types with const objects.
-
-**When to use:** Always - this is the core functionality that runs by default.
-
-**Why use it:** Get lightweight, type-safe interfaces perfect for frontend code, API responses, and type sharing without the heavy Prisma Client runtime.
+Generates TypeScript interfaces from Prisma models and enum types with const objects.
 
 **Example:**
 
@@ -109,19 +106,13 @@ export interface User {
 }
 ```
 
-**Use Case:** Perfect for typing API responses in your frontend without importing Prisma Client.
-
 ---
 
 ## Configuration Options
 
 ### `output`
 
-**What it does:** Sets a custom output directory for generated types.
-
-**When to use:** Monorepos, custom project structures, or when you need types in a specific location.
-
-**Why use it:** Organize generated files, avoid conflicts with other generators, and match your project's structure.
+where to have your generated files, to be in ( ie: generated/types, ) or in your shared `monorepo` lib.
 
 **Example:**
 
@@ -132,17 +123,11 @@ generator types {
 }
 ```
 
-**Use Case:** In a monorepo, generate types in a shared package: `output = "../../packages/shared-types/src/generated"`
-
 ---
 
 ### `clear`
 
-**What it does:** Clears the output directory before generating new types.
-
-**When to use:** CI/CD pipelines, ensuring clean builds, or when debugging type generation issues.
-
-**Why use it:** Prevents stale files from previous generations, ensures consistency, and helps catch issues early.
+Clears the output directory before generating new types. CI/CD `pipelines`, ensuring clean builds, or when debugging type generation issues. Prevents `stale files` from previous generations, ensures consistency, and helps catch issues early.
 
 **Example:**
 
@@ -154,17 +139,11 @@ generator types {
 }
 ```
 
-**Use Case:** In CI/CD, ensure each build starts with a clean slate to catch any generation issues.
-
 ---
 
 ### `enumOnly`
 
-**What it does:** Generates only enum types, skipping all model types.
-
-**When to use:** Sharing enums across projects, frontend-only enum needs, or when models are generated elsewhere.
-
-**Why use it:** Faster generation, smaller output size, and focused type generation for enum-only use cases.
+Generates only enum types, skipping all model types. Faster generation, smaller output size, and focused type generation for enum-only use cases.
 
 **Example:**
 
@@ -174,40 +153,13 @@ generator types {
   output   = "../generated/types"
   enumOnly = true  // Only generate enums
 }
-
-enum UserRole {
-  ADMIN
-  USER
-  MODERATOR
-}
-
-model User {
-  // This model will be skipped
-  id String @id
-}
 ```
-
-**Generated Output:**
-
-```ts
-// Only enums are generated, no models
-export type UserRole = "ADMIN" | "USER" | "MODERATOR";
-export declare const UserRole: {
-  /* ... */
-};
-```
-
-**Use Case:** Frontend app that only needs enum values for dropdowns or validation, not full model types.
 
 ---
 
 ### `global`
 
-**What it does:** Generates types in the global namespace with a `T` prefix (e.g., `TUser` instead of `User`).
-
-**When to use:** Legacy codebases, avoiding imports, or when you need global type access.
-
-**Why use it:** No imports needed - types are available globally. Works well with global type declaration files.
+Generates types in the global namespace with a `T` prefix (e.g., `TUser` instead of `User`). No imports needed - types are available globally. Works well with global type declaration files.
 
 **Example:**
 
@@ -241,17 +193,11 @@ declare type TUser = {
 const user: TUser = { id: "1", name: "John" };
 ```
 
-**Use Case:** Legacy TypeScript projects that rely on global types or when you want to avoid import statements.
-
 ---
 
 ### `include`
 
-**What it does:** Generates types only for the specified models (comma-separated list).
-
-**When to use:** Selective type generation, frontend-only types, microservices with shared schemas, or reducing bundle size.
-
-**Why use it:** Smaller output, faster generation, and focused types - only generate what you need.
+Generates types only for the specified models (comma-separated list). Selective type generation. Make sure to select the referential enums, models as well.
 
 **Example:**
 
@@ -259,50 +205,15 @@ const user: TUser = { id: "1", name: "John" };
 generator types {
   provider = "prisma-type-generator"
   output   = "../generated/types"
-  include  = "User,Post"  // Only generate these models
-}
-
-model User {
-  id   String @id
-  name String
-}
-
-model Post {
-  id    String @id
-  title String
-}
-
-model InternalLog {
-  // This will be skipped
-  id String @id
+  include  = "User,UserTypeEnum"
 }
 ```
-
-**Generated Output:**
-
-```ts
-// Only User and Post are generated
-export interface User {
-  /* ... */
-}
-export interface Post {
-  /* ... */
-}
-// InternalLog is not generated
-```
-
-**Use Case:** Frontend app that only needs public-facing models, excluding internal admin or logging models.
 
 ---
 
 ### `exclude`
 
-**What it does:** Skips specified models during type generation (comma-separated list).
-
-**When to use:** Hiding internal models, admin-only models, sensitive data models, or reducing bundle size.
-
-**Why use it:** Hide internal types from frontend, reduce bundle size, and improve security by not exposing internal models.
-
+Skips specified models during type generation (comma-separated list).
 **Example:**
 
 ```prisma
@@ -311,38 +222,13 @@ generator types {
   output   = "../generated/types"
   exclude  = "InternalModel,AdminUser,AuditLog"  // Skip these
 }
-
-model User {
-  id   String @id
-  name String
-}
-
-model InternalModel {
-  // This will be excluded
-  id String @id
-}
 ```
-
-**Generated Output:**
-
-```ts
-// User is generated, InternalModel is excluded
-export interface User {
-  /* ... */
-}
-```
-
-**Use Case:** Generate types for frontend while excluding internal admin models, audit logs, or sensitive data models.
 
 ---
 
 ### `splitFiles`
 
-**What it does:** Splits output into separate files - one file per model and enum.
-
-**When to use:** Large schemas, better IDE performance, selective imports, or when you want tree-shaking benefits.
-
-**Why use it:** Faster IDE performance, better tree-shaking, easier navigation, and selective imports reduce bundle size.
+Splits output into separate files - one file per model and enum. Faster IDE performance, better tree-shaking, easier navigation, and selective imports reduce bundle size.
 
 **Example:**
 
@@ -379,27 +265,11 @@ generated/types/
   └── index.ts  // Barrel export (if barrelExports = true)
 ```
 
-**Usage:**
-
-```ts
-// Import only what you need
-import type { User } from "../generated/types/User";
-import type { UserRole } from "../generated/types/UserRole";
-```
-
-**Use Case:** Large monorepo with many models where you want to import only specific types to reduce bundle size.
-
 ---
 
-### `splitBySchema`
+### `splitBySchema` ( prisma multi file schema feature )
 
-**What it does:** Splits types by Prisma schema file names. Models are matched by name prefix (e.g., `User*` → `user.ts`).
-
-**When to use:** Multi-file Prisma schemas, domain-driven design, or when your schema is organized into multiple files.
-
-**Why use it:** Matches your schema organization, better maintainability, and logical grouping of related types.
-
-**Example:**
+Splits types by Prisma schema file names. Models are matched by name prefix (e.g., `User*` → `user.ts`).
 
 **Schema Files:**
 
@@ -408,29 +278,6 @@ prisma/
   ├── schema.prisma
   ├── user.prisma
   └── post.prisma
-```
-
-**user.prisma:**
-
-```prisma
-model User {
-  id   String @id
-  name String
-}
-
-model UserProfile {
-  id     String @id
-  userId String
-}
-```
-
-**post.prisma:**
-
-```prisma
-model Post {
-  id    String @id
-  title String
-}
 ```
 
 **Generator Config:**
@@ -452,17 +299,11 @@ generated/types/
   └── index.ts     // Exports everything (from schema.prisma)
 ```
 
-**Use Case:** Domain-driven design where each domain has its own schema file, and you want generated types to match that organization.
-
 ---
 
 ### `barrelExports`
 
-**What it does:** Generates `index.ts` barrel exports for easier imports (enabled by default).
-
-**When to use:** Always recommended - makes imports cleaner and provides a single entry point.
-
-**Why use it:** Clean imports, single entry point, and easier refactoring. Can be disabled if you prefer direct imports.
+Generates `index.ts` barrel exports for easier imports (enabled by default).
 
 **Example:**
 
@@ -475,33 +316,11 @@ export * from "./Post";
 export * from "./UserRole";
 ```
 
-**Usage:**
-
-```ts
-// Clean import from single entry point
-import type { User, Post, UserRole } from "../generated/types";
-```
-
-**With `barrelExports = false`:**
-
-```ts
-// No index.ts generated
-// Must import directly
-import type { User } from "../generated/types/User";
-import type { Post } from "../generated/types/Post";
-```
-
-**Use Case:** Standard use case - keep it enabled for cleaner imports. Disable only if you have specific import requirements.
-
 ---
 
 ### `basicUtilityTypes`
 
-**What it does:** Generates basic utility types (`Partial`, `Required`, `Readonly`, `DeepPartial`, `DeepRequired`) for every model (enabled by default).
-
-**When to use:** Always recommended - these are commonly used utility types. Disable only if you don't need them to reduce output size.
-
-**Why use it:** Common utility types that are always available, no directives needed, and useful for form handling, updates, and transformations.
+Generates basic utility types (`Partial`, `Required`, `Readonly`, `DeepPartial`, `DeepRequired`) for every model (enabled by default).
 
 **Example:**
 
@@ -538,42 +357,13 @@ export namespace User {
 }
 ```
 
-**Usage:**
-
-```ts
-// Partial - all fields optional
-const partialUser: User.Partial = {
-  name: "John", // email and createdAt are optional
-};
-
-// Required - all fields required (even nullable ones)
-const requiredUser: User.Required = {
-  id: "1",
-  name: "John",
-  email: "john@example.com", // Required even if nullable in schema
-  createdAt: new Date(),
-};
-
-// DeepPartial - works with nested objects too
-const deepPartial: User.DeepPartial = {
-  name: "John",
-  // Nested objects are also partial
-};
-```
-
-**Use Case:** Form handling where fields are optional, API updates with partial data, or when you need to make all fields required for validation.
-
 ---
 
 ## Type Customization
 
 ### `typeMappings`
 
-**What it does:** Maps Prisma types to custom TypeScript types globally (e.g., `DateTime` → `string`).
-
-**When to use:** Serialization needs, API compatibility, or when you need consistent type representation across your app.
-
-**Why use it:** Control how Prisma types are represented in TypeScript, match API contracts, and ensure consistency.
+Maps Prisma types to custom TypeScript types globally (e.g., `DateTime` → `string`).
 
 **Example:**
 
@@ -601,17 +391,13 @@ export interface User {
 }
 ```
 
-**Use Case:** API that serializes dates as ISO strings, or when working with binary data as `Uint8Array` instead of `Buffer`.
-
 ---
 
 ### `jsonTypeMapping`
 
-**What it does:** Enables `PrismaType` namespace for JSON types, allowing you to extend JSON field types.
+Enables `PrismaType` namespace for JSON types, allowing you to extend JSON field types. you can even provide the namespaceName `PrismaJson` or anything you would like to use, and it's cross compatible with `prisma-json-types-generator`.
 
-**When to use:** Strongly-typed JSON fields, when you need type safety for JSON data, or when JSON structure is known.
-
-**Why use it:** Type-safe JSON fields, better autocomplete, and the ability to define JSON structure in a separate file.
+`namespaceName` Sets a custom namespace name for JSON type mapping (default: `PrismaType`).
 
 **Example:**
 
@@ -672,53 +458,11 @@ model User {
 }
 ```
 
-**Use Case:** User preferences stored as JSON where you know the structure and want type safety and autocomplete.
-
----
-
-### `namespaceName`
-
-**What it does:** Sets a custom namespace name for JSON type mapping (default: `PrismaType`).
-
-**When to use:** Naming conflicts, custom conventions, or when you prefer a different namespace name.
-
-**Why use it:** Avoid conflicts with existing types, match team conventions, or use a more descriptive name.
-
-**Example:**
-
-```prisma
-generator types {
-  provider       = "prisma-type-generator"
-  output         = "../generated/types"
-  jsonTypeMapping = true
-  namespaceName  = "AppTypes"  // Custom namespace name
-}
-
-model User {
-  preferences Json
-}
-```
-
-**Generated TypeScript:**
-
-```ts
-// Uses AppTypes instead of PrismaType
-export interface User {
-  preferences: AppTypes.Json | null;
-}
-```
-
-**Use Case:** When `PrismaType` conflicts with existing types in your codebase, or you prefer a more descriptive namespace name.
-
 ---
 
 ### `jsDocComments`
 
-**What it does:** Generates JSDoc comments from Prisma schema comments in the generated TypeScript.
-
-**When to use:** Documentation needs, IDE hints, API documentation generation, or when you want self-documenting types.
-
-**Why use it:** Better developer experience with inline documentation, IDE tooltips, and automatic API documentation.
+Generates JSDoc comments from Prisma schema comments in the generated TypeScript.
 
 **Example:**
 
@@ -767,8 +511,6 @@ export interface User {
   createdAt: Date;
 }
 ```
-
-**Use Case:** API documentation generation, better IDE experience with tooltips, or when you want types to be self-documenting.
 
 ---
 
