@@ -391,15 +391,30 @@ export function parseTypeMappingFromComment(
     .replace(/^\/\/\s*/gm, "")
     .trim();
 
+  // Check if this is a string array literal (should be handled by parseLooseEnumFromComment)
+  // Format: ["value1", "value2"] or !["value1", "value2"] - skip this, it's for union literal types
+  if (cleanComment.startsWith("[") && /^\[["']/.test(cleanComment)) {
+    // This looks like a standalone string array literal, let parseLooseEnumFromComment handle it
+    return null;
+  }
+
   // Check for inline type definition: !{ ... } or ![{ ... }] or !TypeName
   // This format allows defining types directly in the comment
   // Examples:
   //   /// !{ width: number; height: number }
   //   /// ![{ width: number; height: number }]
   //   /// !Record<string, number>
+  // Note: !["string1", "string2"] is handled by parseLooseEnumFromComment, not here
   if (cleanComment.startsWith("!")) {
     // Extract the type definition after the !
     const typeDef = cleanComment.substring(1).trim();
+
+    // Check if this is a string array literal (should be handled by parseLooseEnumFromComment)
+    // Format: !["value1", "value2"] - skip this, it's for union literal types
+    if (typeDef.startsWith("[") && /^\[["']/.test(typeDef)) {
+      // This looks like a string array literal, let parseLooseEnumFromComment handle it
+      return null;
+    }
 
     // If it starts with {, match balanced braces
     if (typeDef.startsWith("{")) {
@@ -420,7 +435,7 @@ export function parseTypeMappingFromComment(
       }
     }
 
-    // If it starts with [, match balanced brackets (for array types)
+    // If it starts with [, match balanced brackets (for array types, but not string literals)
     if (typeDef.startsWith("[")) {
       let bracketCount = 0;
       let endIndex = -1;
@@ -682,6 +697,8 @@ export function parseTypeMappingFromComment(
  * Parse loose enum type from Prisma comment
  * Format: /// @type !["email", "google"]  (strict literal union)
  * Format: /// @type ["email", "google"]   (loose autocomplete)
+ * Format: /// !["email", "google"]  (standalone strict literal union)
+ * Format: /// ["email", "google"]  (standalone loose autocomplete)
  * Returns: { strict: boolean, values: string[] } | null
  */
 export function parseLooseEnumFromComment(
@@ -701,9 +718,27 @@ export function parseLooseEnumFromComment(
   const strictMatch = cleanComment.match(/@type\s+!\s*\[(.*?)\]/);
   const looseMatch = cleanComment.match(/@type\s+\[(.*?)\]/);
 
+  // Match standalone !["..."] format (strict literal union)
+  // Format: !["value1", "value2"] (strict)
+  const standaloneStrictMatch = cleanComment.match(/^!\s*\[(.*?)\]$/);
+
+  // Match standalone ["..."] format (loose autocomplete)
+  // Format: ["value1", "value2"] (loose)
+  const standaloneLooseMatch = cleanComment.match(/^\[(.*?)\]$/);
+
   if (strictMatch) {
     // Strict mode: literal union type
     const valuesStr = strictMatch[1];
+    const values = valuesStr
+      .split(",")
+      .map((v) => v.trim().replace(/^["']|["']$/g, ""))
+      .filter((v) => v.length > 0);
+    return { strict: true, values };
+  }
+
+  if (standaloneStrictMatch) {
+    // Standalone strict mode: literal union type
+    const valuesStr = standaloneStrictMatch[1];
     const values = valuesStr
       .split(",")
       .map((v) => v.trim().replace(/^["']|["']$/g, ""))
@@ -719,6 +754,19 @@ export function parseLooseEnumFromComment(
       .map((v) => v.trim().replace(/^["']|["']$/g, ""))
       .filter((v) => v.length > 0);
     return { strict: false, values };
+  }
+
+  if (standaloneLooseMatch) {
+    // Standalone loose mode: autocomplete-friendly but allows other strings
+    const valuesStr = standaloneLooseMatch[1];
+    const values = valuesStr
+      .split(",")
+      .map((v) => v.trim().replace(/^["']|["']$/g, ""))
+      .filter((v) => v.length > 0);
+    // Only return if it looks like a string array (contains quoted strings)
+    if (values.length > 0 && /["']/.test(valuesStr)) {
+      return { strict: false, values };
+    }
   }
 
   return null;

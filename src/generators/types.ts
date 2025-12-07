@@ -146,12 +146,13 @@ export function generateTypes(options: GenerateTypesOptions): string {
       }
 
       const nullability = field.isRequired ? "" : "| null";
+      const optional = field.isRequired ? "" : "?";
       const list = field.isList ? "[]" : "";
       const fieldJsDoc = fieldComment
         ? `  /**\n   * ${fieldComment}\n   */\n`
         : "";
 
-      output += `${fieldJsDoc}  ${field.name}: ${typeScriptType}${nullability}${list};\n`;
+      output += `${fieldJsDoc}  ${field.name}${optional}: ${typeScriptType}${nullability}${list};\n`;
     }
 
     output += "}\n\n";
@@ -619,12 +620,13 @@ export function generateModelType(
     }
 
     const nullability = field.isRequired ? "" : "| null";
+    const optional = field.isRequired ? "" : "?";
     const list = field.isList ? "[]" : "";
     const fieldJsDoc = fieldComment
       ? `  /**\n   * ${fieldComment}\n   */\n`
       : "";
 
-    output += `${fieldJsDoc}  ${field.name}: ${typeScriptType}${nullability}${list};\n`;
+    output += `${fieldJsDoc}  ${field.name}${optional}: ${typeScriptType}${nullability}${list};\n`;
   }
 
   output += "}\n\n";
