@@ -6,6 +6,8 @@ tsconfig.json
 biome.json
 *.log
 *.tsbuildinfo
+*.map
+dist/**/*.map
 
 # Test files
 *.test.ts

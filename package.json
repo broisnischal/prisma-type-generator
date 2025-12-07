@@ -1,15 +1,13 @@
 {
   "name": "prisma-type-generator",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Prisma type generator for generating types from Prisma schema, with support for JSON type mapping and split by schema and many more.",
   "main": "dist/bin.js",
   "types": "./dist/bin.d.ts",
-  "module": "./dist/bin.mjs",
   "private": false,
   "exports": {
     "require": "./dist/bin.js",
-    "import": "./dist/bin.mjs",
-    "default": "./dist/bin.mjs"
+    "default": "./dist/bin.js"
   },
   "files": [
     "dist",
@@ -21,15 +19,19 @@
   "scripts": {
     "run": "npm run build && npm link",
     "clear": "rimraf dist",
-    "build:tsup": "tsup src/bin.ts --format cjs,esm --dts",
     "lint": "tsc",
-    "build": "npm run clear && npm run build:cjs && npm run build:esm && npm run build:dts",
-    "build:cjs": "esbuild src/bin.ts src/generator.ts src/on-generate.ts src/on-manifest.ts src/config.ts src/util.ts src/generators/*.ts --bundle --outdir=dist --platform=node --format=cjs --outbase=src",
-    "build:esm": "esbuild src/bin.ts src/generator.ts src/on-generate.ts src/on-manifest.ts src/config.ts src/util.ts src/generators/*.ts --bundle --out-extension:.js=.mjs --outdir=dist --platform=node --format=esm --outbase=src",
+    "build": "npm run clear && npm run build:cjs && npm run build:dts",
+    "build:cjs": "esbuild src/bin.ts src/generator.ts src/on-generate.ts src/on-manifest.ts src/config.ts src/util.ts src/generators/*.ts --bundle --outdir=dist --platform=node --format=cjs --outbase=src --minify --external:@prisma/generator-helper --external:@prisma/client",
     "build:dts": "tsc --declaration --emitDeclarationOnly"
   },
   "peerDependencies": {
-    "@prisma/client": ">=5.0.0 || >=6.0.0 || >=7.0.0"
+    "@prisma/client": ">=5.0.0 || >=6.0.0 || >=7.0.0",
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": false
+    }
   },
   "devDependencies": {
     "@commitlint/cli": "^18.6.0",
